@@ -234,10 +234,6 @@ void SkeletonRenderer::drawSkeleton (const Mat4 &transform, uint32_t transformFl
 			for (int i = 0, n = _skeleton->slotsCount; i < n; i++) {
 				spSlot* slot = _skeleton->drawOrder[i];
 				if (!slot->attachment || slot->attachment->type != SP_ATTACHMENT_REGION) continue;
-				if (strcmp(slot->attachment->name,"ui/prime/activity/common/pic/yilingqu.png") == 0 )
-				{
-					int i = 1;
-				}
 				spRegionAttachment* attachment = (spRegionAttachment*)slot->attachment;
 				spRegionAttachment_computeWorldVertices(attachment, slot->bone, _worldVertices);
 				points[0] = Vec2(_worldVertices[0], _worldVertices[1]);

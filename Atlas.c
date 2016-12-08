@@ -243,7 +243,7 @@ spAtlasRegion* spAtlas_createNewAtlasRegionWithSprite(spAtlas* self, const char*
 	strcpy(regionName, newRegionName);
 	newregion->name = regionName;
 	//_spAtlasRegion_updateSprite(newregion, sprite);
-	_spAtlasRegion_updateSprite_Total(newregion, sprite);
+	_spAtlasRegion_updateSprite_Total(newregion, sprite);//这个包括了另外两个的实现
 	return newregion;
 }
 

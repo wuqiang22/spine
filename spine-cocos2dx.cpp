@@ -201,7 +201,7 @@ void _spAtlasRegion_updateSprite_Total(spAtlasRegion* self, void* sprite)
 
 
 
-
+//废弃
 spAttachment* _spSkeleton_createNewAttachmentWithSpriteFrame(spAtlas* atlas, spAttachment* oldAttachment, void* frame, const char* newPageName, const char* newRegionName)
 {
 	if (!frame)
@@ -228,7 +228,10 @@ spAttachment* _spSkeleton_createNewAttachmentWithSpriteFrame(spAtlas* atlas, spA
 	
 }
 
-
+//1:创建新的spAtlasPage:纹理图
+//2:创建新的spAtlasRegion:纹理的描述
+//3:创建新的spAttachment:附载点
+//4:替换现在的附载点即可
 spAttachment* _spSkeleton_createNewAttachmentWithSprite(spAtlas* atlas, spAttachment* oldAttachment, void* sprite, const char* newPageName, const char* newRegionName)
 {
 	if (!sprite)
