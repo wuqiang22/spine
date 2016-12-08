@@ -30,6 +30,7 @@
 
 #include <spine/spine-cocos2dx.h>
 #include <spine/extension.h>
+#include <spine/AtlasAttachmentLoader.h>
 
 USING_NS_CC;
 
@@ -53,3 +54,205 @@ char* _spUtil_readFile (const char* path, int* length) {
 	memcpy(bytes, data.getBytes(), *length);
 	return bytes;
 }
+
+void _spAtlasPage_createTexture_ext(spAtlasPage* self, void* rendererObject)
+{
+	Texture2D* texture = static_cast<Texture2D*>(rendererObject);
+	if (texture)
+	{
+		texture->retain();
+		self->rendererObject = texture;
+		self->width = texture->getPixelsWide();
+		self->height = texture->getPixelsHigh();
+		self->format = SP_ATLAS_RGBA8888;
+		self->minFilter = SP_ATLAS_LINEAR;
+		self->magFilter = SP_ATLAS_LINEAR;
+		self->uWrap = SP_ATLAS_MIRROREDREPEAT;
+		self->vWrap = SP_ATLAS_MIRROREDREPEAT;
+	}
+
+}
+
+
+void _spAtlasRegion_updateSpriteFrame(spAtlasRegion* self, void* spriteFrame)
+{
+	if (!spriteFrame)
+	{
+		return;
+	}
+	cocos2d::SpriteFrame* frame = static_cast<cocos2d::SpriteFrame*>(spriteFrame);
+	if (frame)
+	{
+		const Size& texturePixelSize = frame->getTexture()->getContentSizeInPixels();
+		const Rect& pixelRect = frame->getRectInPixels();
+
+		self->rotate = frame->isRotated();
+		self->flip = false;
+		self->x = frame->getRect().origin.x;
+		self->y = frame->getRect().origin.y;
+		self->width = frame->getRect().size.width;
+		self->height = frame->getRect().size.height;
+		self->u = (float)(pixelRect.origin.x) / texturePixelSize.width;
+		self->v = (float)(pixelRect.origin.y) / texturePixelSize.height;
+		if (frame->isRotated())
+		{
+			self->u2 = (float)(pixelRect.size.height + pixelRect.origin.x) / texturePixelSize.width;
+			self->v2 = (float)(pixelRect.size.width + pixelRect.origin.y) / texturePixelSize.height;
+		}
+		else
+		{
+			self->u2 = (float)(pixelRect.size.width + pixelRect.origin.x) / texturePixelSize.width;
+			self->v2 = (float)(pixelRect.size.height + pixelRect.origin.y) / texturePixelSize.height;
+		}
+		self->originalWidth = frame->getOriginalSize().width;
+		self->originalHeight = frame->getOriginalSize().height;
+		self->offsetX = frame->getOffset().x + (self->originalWidth - frame->getRect().size.width) / 2;
+		self->offsetY = frame->getOffset().y + (self->originalHeight - frame->getRect().size.height) / 2;
+		self->index = -1;
+	}
+}
+
+void _spAtlasRegion_updateSprite(spAtlasRegion* self, void* sprite)
+{
+	if (!sprite)
+	{
+		return;
+	}
+
+	cocos2d::Sprite* spSprite = static_cast<cocos2d::Sprite*>(sprite);
+	if (spSprite)
+	{
+		const Size& texturePixelSize = spSprite->getTexture()->getContentSizeInPixels();
+		const Size& spriteSize = spSprite->getContentSize();
+		const Rect& spriteRect = spSprite->getTextureRect();
+		const Rect& pixelRect = CC_RECT_POINTS_TO_PIXELS(spriteRect);
+
+
+		self->rotate = false;
+		self->flip = false;
+
+		self->x = spriteRect.origin.x;
+		self->y = spriteRect.origin.y;
+		self->width = spriteRect.size.width;
+		self->height = spriteRect.size.height;
+		self->u = (float)(pixelRect.origin.x) / texturePixelSize.width;
+		self->v = (float)(pixelRect.origin.y) / texturePixelSize.height;
+
+		
+
+		self->u2 = (float)(pixelRect.size.width + pixelRect.origin.x) / texturePixelSize.width;
+		self->v2 = (float)(pixelRect.size.height + pixelRect.origin.y) / texturePixelSize.height;
+
+		self->originalWidth = spriteRect.size.width;
+		self->originalHeight = spriteRect.size.height;
+		self->offsetX = (spriteSize.width - spriteRect.size.width) / 2;
+		self->offsetY = (spriteSize.height - spriteRect.size.height) / 2;
+		self->index = -1;
+	}
+}
+
+
+//统一了上面的两个接口
+void _spAtlasRegion_updateSprite_Total(spAtlasRegion* self, void* sprite)
+{
+	if (!sprite)
+	{
+		return;
+	}
+
+	cocos2d::Sprite* spSprite = static_cast<cocos2d::Sprite*>(sprite);
+	if (spSprite)
+	{
+		const Size& texturePixelSize = spSprite->getTexture()->getContentSizeInPixels();
+		const Size& spriteSize = spSprite->getContentSize();
+		const Rect& spriteRect = spSprite->getTextureRect();
+		const Rect& pixelRect = CC_RECT_POINTS_TO_PIXELS(spriteRect);
+
+
+		self->rotate = spSprite->isTextureRectRotated();
+		self->flip = false;
+
+		self->x = spriteRect.origin.x;
+		self->y = spriteRect.origin.y;
+		self->width = spriteRect.size.width;
+		self->height = spriteRect.size.height;
+		self->u = (float)(pixelRect.origin.x) / texturePixelSize.width;
+		self->v = (float)(pixelRect.origin.y) / texturePixelSize.height;
+
+		if (spSprite->isTextureRectRotated())
+		{
+			self->u2 = (float)(pixelRect.size.height + pixelRect.origin.x) / texturePixelSize.width;
+			self->v2 = (float)(pixelRect.size.width + pixelRect.origin.y) / texturePixelSize.height;
+		}
+		else
+		{
+			self->u2 = (float)(pixelRect.size.width + pixelRect.origin.x) / texturePixelSize.width;
+			self->v2 = (float)(pixelRect.size.height + pixelRect.origin.y) / texturePixelSize.height;
+		}
+
+
+		self->originalWidth = spriteRect.size.width;
+		self->originalHeight = spriteRect.size.height;
+		self->offsetX = spSprite->getOffsetPosition().x;
+		self->offsetY = spSprite->getOffsetPosition().y;
+		self->index = -1;
+	}
+}
+
+
+
+
+spAttachment* _spSkeleton_createNewAttachmentWithSpriteFrame(spAtlas* atlas, spAttachment* oldAttachment, void* frame, const char* newPageName, const char* newRegionName)
+{
+	if (!frame)
+	{
+		return 0;
+	}
+	const char* oldAttachmentName = oldAttachment->name; 
+	cocos2d::SpriteFrame* spriteFrame = static_cast<cocos2d::SpriteFrame*>(frame);
+	spAtlasPage* newPage = spAtlas_createNewAtlasPage(atlas, newPageName, spriteFrame->getTexture());
+	if (!newPage)
+	{
+		return 0;
+	}
+	
+	spAtlasRegion* newRegion = spAtlas_createNewAtlasRegionWithSpriteFrame(atlas, newRegionName, spriteFrame);
+	if (!newRegion)
+	{
+		return 0;
+	}
+
+	newRegion->page = newPage;
+
+	return spAtlasAttachmentLoader_createAttachmentWidthOldAttachment(oldAttachment, newRegion);
+	
+}
+
+
+spAttachment* _spSkeleton_createNewAttachmentWithSprite(spAtlas* atlas, spAttachment* oldAttachment, void* sprite, const char* newPageName, const char* newRegionName)
+{
+	if (!sprite)
+	{
+		return 0;
+	}
+	const char* oldAttachmentName = oldAttachment->name;
+	cocos2d::Sprite* spSprite = static_cast<cocos2d::Sprite*>(sprite);
+	spAtlasPage* newPage = spAtlas_createNewAtlasPage(atlas, newPageName, spSprite->getTexture());
+	if (!newPage)
+	{
+		return 0;
+	}
+
+	spAtlasRegion* newRegion = spAtlas_createNewAtlasRegionWithSprite(atlas, newRegionName, spSprite);
+	if (!newRegion)
+	{
+		return 0;
+	}
+
+	newRegion->page = newPage;
+
+	return spAtlasAttachmentLoader_createAttachmentWidthOldAttachment(oldAttachment, newRegion);
+
+}
+
+

@@ -102,6 +102,17 @@ void _spAtlasPage_createTexture (spAtlasPage* self, const char* path);
 void _spAtlasPage_disposeTexture (spAtlasPage* self);
 char* _spUtil_readFile (const char* path, int* length);
 
+void _spAtlasPage_createTexture_ext(spAtlasPage* self, void* rendererObject);
+spAttachment* _spSkeleton_createNewAttachmentWithSpriteFrame(spAtlas* atlas, spAttachment* oldAttachment, void* frame, const char* newPageName, const char* newRegionName);
+void _spAtlasRegion_updateSpriteFrame(spAtlasRegion* self, void* spriteFrame);
+
+spAttachment* _spSkeleton_createNewAttachmentWithSprite(spAtlas* atlas, spAttachment* oldAttachment, void* sprite, const char* newPageName, const char* newRegionName);
+void _spAtlasRegion_updateSprite(spAtlasRegion* self, void* sprite);
+
+
+void _spAtlasRegion_updateSprite_Total(spAtlasRegion* self, void* sprite);
+
+
 #ifdef SPINE_SHORT_NAMES
 #define _AtlasPage_createTexture(...) _spAtlasPage_createTexture(__VA_ARGS__)
 #define _AtlasPage_disposeTexture(...) _spAtlasPage_disposeTexture(__VA_ARGS__)

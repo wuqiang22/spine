@@ -111,3 +111,173 @@ spAtlasAttachmentLoader* spAtlasAttachmentLoader_create (spAtlas* atlas) {
 	self->atlas = atlas;
 	return self;
 }
+
+spAttachment* spAtlasAttachmentLoader_createAttachmentWidthOldAttachment(spAttachment* oldAttachment, spAtlasRegion* newRegion)
+{
+	const char* oldAttachmentName = oldAttachment->name;
+	spAttachmentType type = oldAttachment->type;
+	switch (type)
+	{
+	case SP_ATTACHMENT_REGION:
+	{
+		spRegionAttachment* attachment;
+		spAtlasRegion* region = newRegion;
+		attachment = spRegionAttachment_create(oldAttachmentName);
+		attachment->rendererObject = region;
+		spRegionAttachment_setUVs(attachment, region->u, region->v, region->u2, region->v2, region->rotate);
+		attachment->regionOffsetX = region->offsetX;
+		attachment->regionOffsetY = region->offsetY;
+		attachment->regionWidth = region->width;
+		attachment->regionHeight = region->height;
+		attachment->regionOriginalWidth = region->originalWidth;
+		attachment->regionOriginalHeight = region->originalHeight;
+
+		spRegionAttachment* oldRegionAttachment = SUB_CAST(spRegionAttachment, oldAttachment);
+		attachment->x = oldRegionAttachment->x;
+		attachment->y = oldRegionAttachment->y;
+		attachment->scaleX = oldRegionAttachment->scaleX;
+		attachment->scaleY = oldRegionAttachment->scaleY;
+		attachment->width = oldRegionAttachment->width;
+		attachment->height = oldRegionAttachment->height;
+		attachment->r = oldRegionAttachment->r;
+		attachment->g = oldRegionAttachment->g;
+		attachment->b = oldRegionAttachment->b;
+		attachment->a = oldRegionAttachment->a;
+		attachment->rotation = oldRegionAttachment->rotation;
+		spRegionAttachment_updateOffset(attachment);
+
+
+		return SUPER(attachment);
+	}
+	case SP_ATTACHMENT_MESH:
+	{
+		spMeshAttachment* attachment;
+		spAtlasRegion* region = newRegion;
+		attachment = spMeshAttachment_create(oldAttachmentName);
+		attachment->rendererObject = region;
+		attachment->regionU = region->u;
+		attachment->regionV = region->v;
+		attachment->regionU2 = region->u2;
+		attachment->regionV2 = region->v2;
+		attachment->regionRotate = region->rotate;
+		attachment->regionOffsetX = region->offsetX;
+		attachment->regionOffsetY = region->offsetY;
+		attachment->regionWidth = region->width;
+		attachment->regionHeight = region->height;
+		attachment->regionOriginalWidth = region->originalWidth;
+		attachment->regionOriginalHeight = region->originalHeight;
+
+		spMeshAttachment* oldMeshAttachment = SUB_CAST(spMeshAttachment, oldAttachment);
+		attachment->verticesCount = oldMeshAttachment->verticesCount;
+		attachment->vertices = MALLOC(float, attachment->verticesCount);
+		for (int i = 0; i < attachment->verticesCount; i++)
+			attachment->vertices[i] = oldMeshAttachment->vertices[i];
+
+		attachment->trianglesCount = oldMeshAttachment->trianglesCount;
+		attachment->triangles = MALLOC(int, attachment->trianglesCount);
+		for (int i = 0; i < attachment->trianglesCount; i++)
+			attachment->triangles[i] = oldMeshAttachment->triangles[i];
+
+		attachment->regionUvsCount = oldMeshAttachment->regionUvsCount;
+		attachment->regionUVs = MALLOC(float, oldMeshAttachment->regionUvsCount);
+		for (int i = 0; i < attachment->trianglesCount; i++)
+			attachment->regionUVs[i] = oldMeshAttachment->regionUVs[i];
+		spMeshAttachment_updateUVs(attachment);
+
+		attachment->r = oldMeshAttachment->r;
+		attachment->b = oldMeshAttachment->b;
+		attachment->g = oldMeshAttachment->g;
+		attachment->a = oldMeshAttachment->a;
+		attachment->hullLength = oldMeshAttachment->hullLength;
+
+		attachment->edgesCount = oldMeshAttachment->edgesCount;
+		attachment->edges = MALLOC(int, oldMeshAttachment->edgesCount);
+		for (int i = 0; i < attachment->edgesCount; i++)
+			attachment->edges[i] = oldMeshAttachment->edges[i];
+		attachment->width = oldMeshAttachment->width;
+		attachment->height = oldMeshAttachment->height;
+		return SUPER(attachment);
+	}
+	case SP_ATTACHMENT_SKINNED_MESH:
+	{
+		spSkinnedMeshAttachment* attachment;
+		spAtlasRegion* region = newRegion;
+		attachment = spSkinnedMeshAttachment_create(oldAttachmentName);
+		attachment->rendererObject = region;
+		attachment->regionU = region->u;
+		attachment->regionV = region->v;
+		attachment->regionU2 = region->u2;
+		attachment->regionV2 = region->v2;
+		attachment->regionRotate = region->rotate;
+		attachment->regionOffsetX = region->offsetX;
+		attachment->regionOffsetY = region->offsetY;
+		attachment->regionWidth = region->width;
+		attachment->regionHeight = region->height;
+		attachment->regionOriginalWidth = region->originalWidth;
+		attachment->regionOriginalHeight = region->originalHeight;
+
+		spSkinnedMeshAttachment* oldSkinMeshAttachment = SUB_CAST(spSkinnedMeshAttachment, oldAttachment);
+		attachment->uvsCount = oldSkinMeshAttachment->uvsCount;
+		attachment->regionUVs = MALLOC(float, attachment->uvsCount);
+		for (int i = 0; i < attachment->uvsCount; i++)
+		{
+			attachment->regionUVs[i] = oldSkinMeshAttachment->regionUVs[i];
+		}
+		attachment->bonesCount = oldSkinMeshAttachment->bonesCount;
+		attachment->weightsCount = oldSkinMeshAttachment->weightsCount;
+
+		attachment->bones = MALLOC(int, attachment->bonesCount);
+		attachment->weights = MALLOC(float, attachment->weightsCount);
+		for (int i = 0; i < attachment->bonesCount; i++)
+		{
+			attachment->bones[i] = oldSkinMeshAttachment->bones[i];
+		}
+		for (int i = 0; i < attachment->weightsCount; i++)
+		{
+			attachment->weights[i] = oldSkinMeshAttachment->weights[i];
+		}
+
+		attachment->trianglesCount = oldSkinMeshAttachment->trianglesCount;
+		attachment->triangles = MALLOC(int, attachment->trianglesCount);
+		for (int i = 0; i < attachment->trianglesCount; i++)
+		{
+			attachment->triangles[i] = oldSkinMeshAttachment->triangles[i];
+		}
+		spSkinnedMeshAttachment_updateUVs(attachment);
+		attachment->r = oldSkinMeshAttachment->r;
+		attachment->g = oldSkinMeshAttachment->g;
+		attachment->b = oldSkinMeshAttachment->b;
+		attachment->a = oldSkinMeshAttachment->a;
+
+		attachment->hullLength = oldSkinMeshAttachment->hullLength;
+
+		attachment->edgesCount = oldSkinMeshAttachment->edgesCount;
+		attachment->edges = MALLOC(int, attachment->edgesCount);
+		for (int i = 0; i < attachment->edgesCount; i++)
+		{
+			attachment->edges[i] = oldSkinMeshAttachment->edges[i];
+		}
+
+		attachment->width = oldSkinMeshAttachment->width;
+		attachment->height = oldSkinMeshAttachment->height;
+
+
+		return SUPER(attachment);
+	}
+	case SP_ATTACHMENT_BOUNDING_BOX:
+	{
+		spBoundingBoxAttachment* attachment = spBoundingBoxAttachment_create(oldAttachmentName);
+		spBoundingBoxAttachment* oldBoundingBoxAttachment = SUB_CAST(spBoundingBoxAttachment, oldAttachment);
+		attachment->verticesCount = oldBoundingBoxAttachment->verticesCount;
+		attachment->vertices = MALLOC(float, attachment->verticesCount);
+		for (int i = 0; i < attachment->verticesCount; i++)
+		{
+			attachment->vertices[i] = oldBoundingBoxAttachment->vertices[i];
+		}
+
+		return SUPER(attachment);
+	}
+	default:
+		return 0;
+	}
+}

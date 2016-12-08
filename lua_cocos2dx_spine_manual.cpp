@@ -412,8 +412,64 @@ tolua_lerror:
 
 static int lua_cocos2dx_spine_SkeletonAnimation_setAnimation(lua_State* tolua_S)
 {
+	int argc = 0;
+	spine::SkeletonAnimation* cobj = nullptr;
+	bool ok = true;
+
+#if COCOS2D_DEBUG >= 1
+	tolua_Error tolua_err;
+#endif
+
+
+#if COCOS2D_DEBUG >= 1
+	if (!tolua_isusertype(tolua_S, 1, "sp.SkeletonAnimation", 0, &tolua_err)) goto tolua_lerror;
+#endif
+
+	cobj = (spine::SkeletonAnimation*)tolua_tousertype(tolua_S, 1, 0);
+
+#if COCOS2D_DEBUG >= 1
+	if (!cobj)
+	{
+		tolua_error(tolua_S, "invalid 'cobj' in function 'lua_cocos2dx_spine_SkeletonAnimation_setAnimation'", nullptr);
+		return 0;
+	}
+#endif
+
+	argc = lua_gettop(tolua_S) - 1;
+	if (argc == 3)
+	{
+		int arg0;
+		const char* arg1;
+		bool arg2;
+
+		ok &= luaval_to_int32(tolua_S, 2, (int *)&arg0, "sp.SkeletonAnimation:setAnimation");
+
+		std::string arg1_tmp; ok &= luaval_to_std_string(tolua_S, 3, &arg1_tmp, "sp.SkeletonAnimation:setAnimation"); arg1 = arg1_tmp.c_str();
+
+		ok &= luaval_to_boolean(tolua_S, 4, &arg2, "sp.SkeletonAnimation:setAnimation");
+		if (!ok)
+			return 0;
+
+		cobj->setAnimation(arg0, arg1, arg2);
+
+		lua_settop(tolua_S, 1);
+		return 1;
+	}
+	luaL_error(tolua_S, "%s has wrong number of arguments: %d, was expecting %d \n", "setAnimation", argc, 3);
+	return 0;
+
+#if COCOS2D_DEBUG >= 1
+tolua_lerror:
+	tolua_error(tolua_S, "#ferror in function 'lua_cocos2dx_spine_SkeletonAnimation_setAnimation'.", &tolua_err);
+#endif
+
+	return 0;
+}
+
+static int lua_cocos2dx_spine_SkeletonRender_repleaceAttachmentWithSpriteFrame(lua_State* tolua_S)
+{
     int argc = 0;
-    spine::SkeletonAnimation* cobj = nullptr;
+    spine::SkeletonRenderer* cobj = nullptr;
     bool ok  = true;
     
 #if COCOS2D_DEBUG >= 1
@@ -422,49 +478,148 @@ static int lua_cocos2dx_spine_SkeletonAnimation_setAnimation(lua_State* tolua_S)
     
     
 #if COCOS2D_DEBUG >= 1
-    if (!tolua_isusertype(tolua_S,1,"sp.SkeletonAnimation",0,&tolua_err)) goto tolua_lerror;
+    if (!tolua_isusertype(tolua_S,1,"sp.SkeletonRenderer",0,&tolua_err)) goto tolua_lerror;
 #endif
     
-    cobj = (spine::SkeletonAnimation*)tolua_tousertype(tolua_S,1,0);
+	cobj = (spine::SkeletonRenderer*)tolua_tousertype(tolua_S, 1, 0);
     
 #if COCOS2D_DEBUG >= 1
     if (!cobj)
     {
-        tolua_error(tolua_S,"invalid 'cobj' in function 'lua_cocos2dx_spine_SkeletonAnimation_setAnimation'", nullptr);
+        tolua_error(tolua_S,"invalid 'cobj' in function 'lua_cocos2dx_spine_SkeletonRender_repleaceAttachmentWithSpriteFrame'", nullptr);
         return 0;
     }
 #endif
-    
     argc = lua_gettop(tolua_S)-1;
-    if (argc == 3)
+    if (argc == 5)
     {
-        int arg0;
-        const char* arg1;
-        bool arg2;
-        
-        ok &= luaval_to_int32(tolua_S, 2,(int *)&arg0, "sp.SkeletonAnimation:setAnimation");
-        
-        std::string arg1_tmp; ok &= luaval_to_std_string(tolua_S, 3, &arg1_tmp, "sp.SkeletonAnimation:setAnimation"); arg1 = arg1_tmp.c_str();
-        
-        ok &= luaval_to_boolean(tolua_S, 4,&arg2, "sp.SkeletonAnimation:setAnimation");
-        if(!ok)
-            return 0;
-        
-        cobj->setAnimation(arg0, arg1, arg2);
-        
-        lua_settop(tolua_S, 1);
+		std::string arg0, arg1, arg3,arg4;
+		cocos2d::SpriteFrame* arg2;
+		ok &= luaval_to_std_string(tolua_S, 2, &arg0, "sp.SkeletonRenderer:repleaceAttachmentWithSpriteFrame");
+		ok &= luaval_to_std_string(tolua_S, 3, &arg1, "sp.SkeletonRenderer:repleaceAttachmentWithSpriteFrame");
+		ok &= luaval_to_object<cocos2d::SpriteFrame>(tolua_S, 4, "cc.SpriteFrame", &arg2);
+		ok &= luaval_to_std_string(tolua_S, 5, &arg3, "sp.SkeletonRenderer:repleaceAttachmentWithSpriteFrame");
+		ok &= luaval_to_std_string(tolua_S, 6, &arg4, "sp.SkeletonRenderer:repleaceAttachmentWithSpriteFrame");
+		if (!ok)
+		{
+			return 0;
+		}
+
+		bool ret = cobj->repleaceAttachmentWithSpriteFrame(arg0, arg1, arg2, arg3, arg4);
+		tolua_pushboolean(tolua_S, (bool)ret);
         return 1;
     }
-    luaL_error(tolua_S, "%s has wrong number of arguments: %d, was expecting %d \n", "setAnimation",argc, 3);
+    luaL_error(tolua_S, "%s has wrong number of arguments: %d, was expecting %d \n", "repleaceAttachmentWithSpriteFrame",argc, 5);
     return 0;
     
 #if COCOS2D_DEBUG >= 1
 tolua_lerror:
-    tolua_error(tolua_S,"#ferror in function 'lua_cocos2dx_spine_SkeletonAnimation_setAnimation'.",&tolua_err);
+    tolua_error(tolua_S,"#ferror in function 'lua_cocos2dx_spine_SkeletonRender_repleaceAttachmentWithSpriteFrame'.",&tolua_err);
 #endif
     
     return 0;
 }
+
+
+static int lua_cocos2dx_spine_SkeletonRender_repleaceAttachmentWithSprite(lua_State* tolua_S)
+{
+	int argc = 0;
+	spine::SkeletonRenderer* cobj = nullptr;
+	bool ok = true;
+
+#if COCOS2D_DEBUG >= 1
+	tolua_Error tolua_err;
+#endif
+
+
+#if COCOS2D_DEBUG >= 1
+	if (!tolua_isusertype(tolua_S, 1, "sp.SkeletonRenderer", 0, &tolua_err)) goto tolua_lerror;
+#endif
+
+	cobj = (spine::SkeletonRenderer*)tolua_tousertype(tolua_S, 1, 0);
+
+#if COCOS2D_DEBUG >= 1
+	if (!cobj)
+	{
+		tolua_error(tolua_S, "invalid 'cobj' in function 'lua_cocos2dx_spine_SkeletonRender_repleaceAttachmentWithSprite'", nullptr);
+		return 0;
+	}
+#endif
+	argc = lua_gettop(tolua_S) - 1;
+	if (argc == 5)
+	{
+		std::string arg0, arg1, arg3, arg4;
+		cocos2d::Sprite* arg2;
+		ok &= luaval_to_std_string(tolua_S, 2, &arg0, "sp.SkeletonRenderer:repleaceAttachmentWithSprite");
+		ok &= luaval_to_std_string(tolua_S, 3, &arg1, "sp.SkeletonRenderer:repleaceAttachmentWithSprite");
+		ok &= luaval_to_object<cocos2d::Sprite>(tolua_S, 4, "cc.Sprite", &arg2);
+		ok &= luaval_to_std_string(tolua_S, 5, &arg3, "sp.SkeletonRenderer:repleaceAttachmentWithSprite");
+		ok &= luaval_to_std_string(tolua_S, 6, &arg4, "sp.SkeletonRenderer:repleaceAttachmentWithSprite");
+		if (!ok)
+		{
+			return 0;
+		}
+
+		bool ret = cobj->repleaceAttachmentWithSprite(arg0, arg1, arg2, arg3, arg4);
+		tolua_pushboolean(tolua_S, (bool)ret);
+		return 1;
+	}
+	luaL_error(tolua_S, "%s has wrong number of arguments: %d, was expecting %d \n", "repleaceAttachmentWithSprite", argc, 5);
+	return 0;
+
+#if COCOS2D_DEBUG >= 1
+tolua_lerror:
+	tolua_error(tolua_S, "#ferror in function 'lua_cocos2dx_spine_SkeletonRender_repleaceAttachmentWithSprite'.", &tolua_err);
+#endif
+
+	return 0;
+}
+
+
+static int lua_cocos2dx_spine_SkeletonRender_clearAllRepleacedAttachments(lua_State* tolua_S)
+{
+	int argc = 0;
+	spine::SkeletonRenderer* cobj = nullptr;
+	bool ok = true;
+
+#if COCOS2D_DEBUG >= 1
+	tolua_Error tolua_err;
+#endif
+
+
+#if COCOS2D_DEBUG >= 1
+	if (!tolua_isusertype(tolua_S, 1, "sp.SkeletonRenderer", 0, &tolua_err)) goto tolua_lerror;
+#endif
+
+	cobj = (spine::SkeletonRenderer*)tolua_tousertype(tolua_S, 1, 0);
+
+#if COCOS2D_DEBUG >= 1
+	if (!cobj)
+	{
+		tolua_error(tolua_S, "invalid 'cobj' in function 'lua_cocos2dx_spine_SkeletonRender_clearAllRepleacedAttachments'", nullptr);
+		return 0;
+	}
+#endif
+	argc = lua_gettop(tolua_S) - 1;
+	if (argc == 0)
+	{
+
+		cobj->clearAllRepleacedAttachments();
+		lua_settop(tolua_S, 1);
+		return 1;
+	}
+	luaL_error(tolua_S, "%s has wrong number of arguments: %d, was expecting %d \n", "clearAllRepleacedAttachments", argc, 4);
+	return 0;
+
+#if COCOS2D_DEBUG >= 1
+tolua_lerror:
+	tolua_error(tolua_S, "#ferror in function 'lua_cocos2dx_spine_SkeletonRender_clearAllRepleacedAttachments'.", &tolua_err);
+#endif
+
+	return 0;
+}
+
+
 
 static void extendCCSkeletonAnimation(lua_State* L)
 {
@@ -487,13 +642,35 @@ static void extendCCSkeletonAnimation(lua_State* L)
     g_typeCast["SkeletonAnimation"] = "sp.SkeletonAnimation";
 }
 
+//repleaceAttachmentWithSpriteFrame 已经废弃，repleaceAttachmentWithSprite里面已经融合了精灵帧的情况
+//repleaceAttachmentWithSpriteFrame 和 repleaceAttachmentWithSprite 负责替换
+//clearAllRepleacedAttachments 负责还原
+static void extendCCSkeletonRender(lua_State* L)
+{
+	lua_pushstring(L, "sp.SkeletonRenderer");
+	lua_rawget(L, LUA_REGISTRYINDEX);
+	if (lua_istable(L, -1))
+	{
+		tolua_function(L, "repleaceAttachmentWithSpriteFrame", lua_cocos2dx_spine_SkeletonRender_repleaceAttachmentWithSpriteFrame);
+		tolua_function(L, "clearAllRepleacedAttachments", lua_cocos2dx_spine_SkeletonRender_clearAllRepleacedAttachments);
+		tolua_function(L, "repleaceAttachmentWithSprite", lua_cocos2dx_spine_SkeletonRender_repleaceAttachmentWithSprite);
+		
+	}
+	lua_pop(L, 1);
+
+	/*Because sp.SkeletonAnimation:create creat a LuaSkeletonAnimation object,so we need use LuaSkeletonAnimation typename for g_luaType*/
+	std::string typeName = typeid(spine::SkeletonRenderer).name();
+	g_luaType[typeName] = "sp.SkeletonRenderer";
+	g_typeCast["SkeletonRenderer"] = "sp.SkeletonRenderer";
+}
+
 int register_all_cocos2dx_spine_manual(lua_State* L)
 {
     if (nullptr == L)
         return 0;
 
     extendCCSkeletonAnimation(L);
-    
+	extendCCSkeletonRender(L);
     return 0;
 }
 

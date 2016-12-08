@@ -148,6 +148,10 @@ spAtlas* spAtlas_create (const char* data, int length, const char* dir, void* re
 spAtlas* spAtlas_createFromFile (const char* path, void* rendererObject);
 void spAtlas_dispose (spAtlas* atlas);
 
+spAtlasPage*  spAtlas_createNewAtlasPage(spAtlas* self, const char* newPageName, void* renderObject);
+spAtlasRegion* spAtlas_createNewAtlasRegionWithSpriteFrame(spAtlas* self, const char* newRegionName, void* spriteFrame);
+spAtlasRegion* spAtlas_createNewAtlasRegionWithSprite(spAtlas* self, const char* newRegionName, void* sprite);
+
 /* Returns 0 if the region was not found. */
 spAtlasRegion* spAtlas_findRegion (const spAtlas* self, const char* name);
 

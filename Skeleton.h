@@ -35,6 +35,7 @@
 #include <spine/Slot.h>
 #include <spine/Skin.h>
 #include <spine/IkConstraint.h>
+#include <spine/Atlas.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,6 +98,9 @@ spAttachment* spSkeleton_getAttachmentForSlotName (const spSkeleton* self, const
 spAttachment* spSkeleton_getAttachmentForSlotIndex (const spSkeleton* self, int slotIndex, const char* attachmentName);
 /* Returns 0 if the slot or attachment was not found. */
 int spSkeleton_setAttachment (spSkeleton* self, const char* slotName, const char* attachmentName);
+
+void spSkeleton_clearAllRepleacedAttachments(const spSkeleton* self);
+int spSkeleton_repleaceAttachment(spSkeleton* self, const char* slotName,spAttachment* newAttachment);
 
 /* Returns 0 if the IK constraint was not found. */
 spIkConstraint* spSkeleton_findIkConstraint (const spSkeleton* self, const char* ikConstraintName);

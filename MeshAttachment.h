@@ -48,6 +48,7 @@ struct spMeshAttachment {
 	float* vertices;
 	int hullLength;
 
+	int regionUvsCount;
 	float* regionUVs;
 	float* uvs;
 

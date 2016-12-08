@@ -57,6 +57,9 @@ const char* spSkin_getAttachmentName (const spSkin* self, int slotIndex, int att
 /** Attach each attachment in this skin if the corresponding attachment in oldSkin is currently attached. */
 void spSkin_attachAll (const spSkin* self, struct spSkeleton* skeleton, const spSkin* oldspSkin);
 
+void spSkin_clearAllRepleacedAttachments(const spSkin* self, struct spSkeleton* skeleton);
+int spSkin_repleaceAttachment(spSkin* self, int slotIndex, spAttachment* newAttachment);
+
 #ifdef SPINE_SHORT_NAMES
 typedef spSkin Skin;
 #define Skin_create(...) spSkin_create(__VA_ARGS__)

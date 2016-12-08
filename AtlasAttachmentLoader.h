@@ -45,6 +45,8 @@ typedef struct {
 
 spAtlasAttachmentLoader* spAtlasAttachmentLoader_create (spAtlas* atlas);
 
+spAttachment* spAtlasAttachmentLoader_createAttachmentWidthOldAttachment(spAttachment* oldAttachment, spAtlasRegion* newRegion);
+
 #ifdef SPINE_SHORT_NAMES
 typedef spAtlasAttachmentLoader AtlasAttachmentLoader;
 #define AtlasAttachmentLoader_create(...) spAtlasAttachmentLoader_create(__VA_ARGS__)

@@ -138,6 +138,7 @@ void SkeletonRenderer::draw (Renderer* renderer, const Mat4& transform, uint32_t
 	renderer->addCommand(&_drawCommand);
 }
 
+
 void SkeletonRenderer::drawSkeleton (const Mat4 &transform, uint32_t transformFlags) {
 	getGLProgramState()->apply(transform);
 
@@ -233,6 +234,10 @@ void SkeletonRenderer::drawSkeleton (const Mat4 &transform, uint32_t transformFl
 			for (int i = 0, n = _skeleton->slotsCount; i < n; i++) {
 				spSlot* slot = _skeleton->drawOrder[i];
 				if (!slot->attachment || slot->attachment->type != SP_ATTACHMENT_REGION) continue;
+				if (strcmp(slot->attachment->name,"ui/prime/activity/common/pic/yilingqu.png") == 0 )
+				{
+					int i = 1;
+				}
 				spRegionAttachment* attachment = (spRegionAttachment*)slot->attachment;
 				spRegionAttachment_computeWorldVertices(attachment, slot->bone, _worldVertices);
 				points[0] = Vec2(_worldVertices[0], _worldVertices[1]);
@@ -343,6 +348,50 @@ spAttachment* SkeletonRenderer::getAttachment (const std::string& slotName, cons
 }
 bool SkeletonRenderer::setAttachment (const std::string& slotName, const std::string& attachmentName) {
 	return spSkeleton_setAttachment(_skeleton, slotName.c_str(), attachmentName.c_str()) ? true : false;
+}
+
+
+bool SkeletonRenderer::repleaceAttachmentWithSpriteFrame(const std::string& slotName, const std::string& attachmentName, cocos2d::SpriteFrame* spriteFrame, const std::string& textureName, const std::string& newRegionName)
+{
+	if (!spriteFrame)
+	{
+		return false;
+	}
+	spAttachment* oldAttachment = spSkeleton_getAttachmentForSlotName(_skeleton, slotName.c_str(), attachmentName.c_str());
+	if (!oldAttachment)
+	{
+		return false;
+	}
+	spAttachment* newAttachment = _spSkeleton_createNewAttachmentWithSpriteFrame(_atlas, oldAttachment, spriteFrame, textureName.c_str(), newRegionName.c_str());
+	if (!newAttachment)
+	{
+		return false;
+	}
+	return spSkeleton_repleaceAttachment(_skeleton, slotName.c_str(),newAttachment) ? true : false;
+}
+
+bool SkeletonRenderer::repleaceAttachmentWithSprite(const std::string& slotName, const std::string& attachmentName, cocos2d::Sprite* sprite, const std::string& textureName, const std::string& newRegionName)
+{
+	if (!sprite)
+	{
+		return false;
+	}
+	spAttachment* oldAttachment = spSkeleton_getAttachmentForSlotName(_skeleton, slotName.c_str(), attachmentName.c_str());
+	if (!oldAttachment)
+	{
+		return false;
+	}
+	spAttachment* newAttachment = _spSkeleton_createNewAttachmentWithSprite(_atlas, oldAttachment, sprite, textureName.c_str(), newRegionName.c_str());
+	if (!newAttachment)
+	{
+		return false;
+	}
+	return spSkeleton_repleaceAttachment(_skeleton, slotName.c_str(), newAttachment) ? true : false;
+}
+
+void SkeletonRenderer::clearAllRepleacedAttachments()
+{
+	spSkeleton_clearAllRepleacedAttachments(_skeleton);
 }
 
 spSkeleton* SkeletonRenderer::getSkeleton () {

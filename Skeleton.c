@@ -298,6 +298,37 @@ spAttachment* spSkeleton_getAttachmentForSlotName (const spSkeleton* self, const
 	return spSkeleton_getAttachmentForSlotIndex(self, slotIndex, attachmentName);
 }
 
+void spSkeleton_clearAllRepleacedAttachments(const spSkeleton* self)
+{
+	if (self->skin)
+	{
+		spSkin_clearAllRepleacedAttachments(self->skin,self);
+		return;
+	}
+
+	if (self->data->defaultSkin)
+	{
+		spSkin_clearAllRepleacedAttachments(self->data->defaultSkin,self);
+		return;
+	}
+
+}
+
+int spSkeleton_repleaceAttachment(spSkeleton* self, const char* slotName, spAttachment* newAttachment)
+{
+	spSkin* skin = self->skin ? self->skin : self->data->defaultSkin;
+	if (!skin)
+	{
+		return 0;
+	}
+	int slotIndex = spSkeleton_findSlotIndex(self, slotName);
+	spSkin_repleaceAttachment(skin, slotIndex, newAttachment);
+	spSlot* slot = spSkeleton_findSlot(self, slotName);
+	spSlot_setAttachment(slot, newAttachment);
+	return 1;
+}
+
+
 spAttachment* spSkeleton_getAttachmentForSlotIndex (const spSkeleton* self, int slotIndex, const char* attachmentName) {
 	if (slotIndex == -1) return 0;
 	if (self->skin) {
@@ -328,6 +359,8 @@ int spSkeleton_setAttachment (spSkeleton* self, const char* slotName, const char
 	}
 	return 0;
 }
+
+
 
 spIkConstraint* spSkeleton_findIkConstraint (const spSkeleton* self, const char* ikConstraintName) {
 	int i;

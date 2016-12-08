@@ -83,6 +83,11 @@ public:
 	/* Returns false if the slot or attachment was not found. */
 	bool setAttachment (const std::string& slotName, const std::string& attachmentName);
 
+	
+	bool repleaceAttachmentWithSpriteFrame(const std::string& slotName, const std::string& attachmentName, cocos2d::SpriteFrame* spriteFrame, const std::string& textureName,const std::string& newRegionName);
+	bool repleaceAttachmentWithSprite(const std::string& slotName, const std::string& attachmentName, cocos2d::Sprite* sprite, const std::string& textureName, const std::string& newRegionName);
+	void clearAllRepleacedAttachments();
+
 	// --- BlendProtocol
 	virtual void setBlendFunc (const cocos2d::BlendFunc& blendFunc);
 	virtual const cocos2d::BlendFunc& getBlendFunc () const;

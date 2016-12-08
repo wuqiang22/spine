@@ -37,6 +37,7 @@ struct _Entry {
 	const char* name;
 	spAttachment* attachment;
 	_Entry* next;
+	_Entry* pre;
 };
 
 _Entry* _Entry_create (int slotIndex, const char* name, spAttachment* attachment) {
@@ -58,6 +59,7 @@ void _Entry_dispose (_Entry* self) {
 typedef struct {
 	spSkin super;
 	_Entry* entries;
+	_Entry* beRepleacedEnties;  //±»¸²¸ÇµÄ
 } _spSkin;
 
 spSkin* spSkin_create (const char* name) {
@@ -74,24 +76,125 @@ void spSkin_dispose (spSkin* self) {
 		entry = nextEntry;
 	}
 
+	entry = SUB_CAST(_spSkin, self)->beRepleacedEnties;
+	while (entry)
+	{
+		_Entry* nextEntry = entry->next;
+		_Entry_dispose(entry);
+		entry = nextEntry;
+	}
+
 	FREE(self->name);
 	FREE(self);
 }
 
 void spSkin_addAttachment (spSkin* self, int slotIndex, const char* name, spAttachment* attachment) {
 	_Entry* newEntry = _Entry_create(slotIndex, name, attachment);
-	newEntry->next = SUB_CAST(_spSkin, self)->entries;
+	_Entry* headEntry = SUB_CAST(_spSkin, self)->entries;
+	if (headEntry)
+	{
+		headEntry->pre = newEntry;
+	}
+	newEntry->next = headEntry;
 	SUB_CAST(_spSkin, self)->entries = newEntry;
 }
 
-spAttachment* spSkin_getAttachment (const spSkin* self, int slotIndex, const char* name) {
-	const _Entry* entry = SUB_CAST(_spSkin, self)->entries;
+_Entry* spSkin_getEntry(const spSkin* self, int slotIndex, const char* name)
+{
+	_Entry* entry = SUB_CAST(_spSkin, self)->entries;
 	while (entry) {
-		if (entry->slotIndex == slotIndex && strcmp(entry->name, name) == 0) return entry->attachment;
+		if (entry->slotIndex == slotIndex && strcmp(entry->name, name) == 0) return entry;
 		entry = entry->next;
 	}
 	return 0;
 }
+
+spAttachment* spSkin_getAttachment (const spSkin* self, int slotIndex, const char* name) {
+	const _Entry* entry = spSkin_getEntry(self, slotIndex, name);
+	if (entry)
+	{
+		return entry->attachment;
+	}
+	return 0;
+}
+
+
+
+int spSkin_repleaceAttachment(spSkin* self, int slotIndex,spAttachment* newAttachment)
+{
+	_Entry* entry = SUB_CAST(_spSkin, self)->entries;
+	while (entry)
+	{
+		if (entry->slotIndex == slotIndex && newAttachment->name && entry->attachment->name && strcmp(newAttachment->name, entry->attachment->name) == 0)
+		{
+			_Entry* nextEntry = entry->next;
+			_Entry* preEntry = entry->pre;
+
+			_Entry* newEntry = _Entry_create(slotIndex, entry->name, newAttachment);
+			if (preEntry)
+			{
+				preEntry->next = newEntry;
+			}
+			newEntry->pre = preEntry;
+			newEntry->next = nextEntry;
+			if (nextEntry)
+			{
+				nextEntry->pre = newEntry;
+			}
+
+			_Entry* beRepleacedHeadEntry = SUB_CAST(_spSkin, self)->beRepleacedEnties;
+			if (beRepleacedHeadEntry)
+			{
+				beRepleacedHeadEntry->pre = entry;
+			}
+			entry->pre = 0;
+			entry->next = beRepleacedHeadEntry;
+			SUB_CAST(_spSkin, self)->beRepleacedEnties = entry;
+
+			return 1;
+		}
+		entry = entry->next;
+	}
+	return 0;
+}
+
+
+void spSkin_clearAllRepleacedAttachments(const spSkin* self, struct spSkeleton* skeleton)
+{
+	_Entry* entry = SUB_CAST(_spSkin, self)->beRepleacedEnties;
+	while (entry)
+	{
+		_Entry* nextRepleacedEntry = entry->next; 
+
+
+		_Entry* oldEntry = spSkin_getEntry(self, entry->slotIndex, entry->name);
+		_Entry* preOldEntry = oldEntry->pre;
+		_Entry* nextOldEntry = oldEntry->next;
+
+		entry->pre = preOldEntry;
+		entry->next = nextOldEntry;
+		if (preOldEntry)
+		{
+			preOldEntry->next = entry;
+		}
+		if (nextOldEntry)
+		{
+			nextOldEntry->pre = entry;
+		}
+
+		spSlot *slot = skeleton->slots[oldEntry->slotIndex];
+		if (slot->attachment && slot->attachment == oldEntry->attachment)
+		{
+			spSlot_setAttachment(slot, entry->attachment);
+		}
+
+		_Entry_dispose(oldEntry);
+		entry = nextRepleacedEntry;
+	}
+	SUB_CAST(_spSkin, self)->beRepleacedEnties = 0;
+}
+
+
 
 const char* spSkin_getAttachmentName (const spSkin* self, int slotIndex, int attachmentIndex) {
 	const _Entry* entry = SUB_CAST(_spSkin, self)->entries;

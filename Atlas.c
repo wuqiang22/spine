@@ -169,6 +169,84 @@ static const char* formatNames[] = {"Alpha", "Intensity", "LuminanceAlpha", "RGB
 static const char* textureFilterNames[] = {"Nearest", "Linear", "MipMap", "MipMapNearestNearest", "MipMapLinearNearest",
 		"MipMapNearestLinear", "MipMapLinearLinear"};
 
+spAtlasPage* spAtlas_createNewAtlasPage(spAtlas* self, const char* newPageName,void* renderObject)
+{
+	if (!renderObject)
+	{
+		return 0;
+	}
+
+	spAtlasPage *newPage, *lastPage, *nextPage;
+	nextPage = self->pages;
+	while (nextPage)
+	{
+		if (nextPage->name && strcmp(nextPage->name, newPageName) == 0)
+		{
+			return nextPage;
+		}
+		lastPage = nextPage;
+		nextPage = nextPage->next;
+	}
+
+	newPage = spAtlasPage_create(self, newPageName);
+	lastPage->next = newPage;
+
+	_spAtlasPage_createTexture_ext(newPage, renderObject);
+
+	return newPage;
+ }
+
+spAtlasRegion* spAtlas_createNewAtlasRegionWithSpriteFrame(spAtlas* self, const char* newRegionName, void* spriteFrame)
+{
+	 spAtlasRegion *lastRegion, *nextRegion, *newregion;
+	 nextRegion = self->regions;
+	 while (nextRegion)
+	 {
+		 if (nextRegion->name && strcmp(nextRegion->name, newRegionName) == 0)
+		 {
+			 return nextRegion;
+		 }
+		 lastRegion = nextRegion;
+		 nextRegion = nextRegion->next;
+	 }
+	 newregion = spAtlasRegion_create();
+	 lastRegion->next = newregion;
+
+	 char* regionName = MALLOC(char, strlen(newRegionName) + 1);
+	 memset(regionName, strlen(newRegionName) + 1, 0);
+	 memcpy(regionName, newRegionName, strlen(newRegionName));
+	 strcpy(regionName, newRegionName);
+	 newregion->name = regionName;
+	 _spAtlasRegion_updateSpriteFrame(newregion, spriteFrame);
+	 return newregion;
+}
+
+spAtlasRegion* spAtlas_createNewAtlasRegionWithSprite(spAtlas* self, const char* newRegionName, void* sprite)
+{
+	spAtlasRegion *lastRegion, *nextRegion, *newregion;
+	nextRegion = self->regions;
+	while (nextRegion)
+	{
+		if (nextRegion->name && strcmp(nextRegion->name, newRegionName) == 0)
+		{
+			return nextRegion;
+		}
+		lastRegion = nextRegion;
+		nextRegion = nextRegion->next;
+	}
+	newregion = spAtlasRegion_create();
+	lastRegion->next = newregion;
+
+	char* regionName = MALLOC(char, strlen(newRegionName) + 1);
+	memset(regionName, strlen(newRegionName) + 1, 0);
+	memcpy(regionName, newRegionName, strlen(newRegionName));
+	strcpy(regionName, newRegionName);
+	newregion->name = regionName;
+	//_spAtlasRegion_updateSprite(newregion, sprite);
+	_spAtlasRegion_updateSprite_Total(newregion, sprite);
+	return newregion;
+}
+
 spAtlas* spAtlas_create (const char* begin, int length, const char* dir, void* rendererObject) {
 	spAtlas* self;
 
@@ -347,3 +425,4 @@ spAtlasRegion* spAtlas_findRegion (const spAtlas* self, const char* name) {
 	}
 	return 0;
 }
+
