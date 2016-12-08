@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>frames</key>
+		<dict>
+			<key>pic/quality1.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{1,215},{185,185}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false />
+				<key>sourceSize</key>
+				<string>{185,185}</string>
+			</dict>
+			<key>pic/quality2.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{188,215},{185,185}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false />
+				<key>sourceSize</key>
+				<string>{185,185}</string>
+			</dict>
+			<key>pic/quality3.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{205,1},{185,185}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false />
+				<key>sourceSize</key>
+				<string>{185,185}</string>
+			</dict>
+			<key>pic/quality4.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{375,188},{185,185}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false />
+				<key>sourceSize</key>
+				<string>{185,185}</string>
+			</dict>
+			<key>pic/quality5.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{392,1},{185,185}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false />
+				<key>sourceSize</key>
+				<string>{185,185}</string>
+			</dict>
+			<key>pic/1.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{1,1},{212,202}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<true />
+				<key>sourceSize</key>
+				<string>{212,202}</string>
+			</dict>
+			<key>pic/chongzhi.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{1,402},{128,52}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false />
+				<key>sourceSize</key>
+				<string>{128,52}</string>
+			</dict>
+			<key>pic/chongzhi-1.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{1,456},{128,52}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false />
+				<key>sourceSize</key>
+				<string>{128,52}</string>
+			</dict>
+			<key>pic/122.png</key>
+			<dict>
+				<key>frame</key>
+				<string>{{131,402},{49,52}}</string>
+				<key>offset</key>
+				<string>{0,0}</string>
+				<key>rotated</key>
+				<false />
+				<key>sourceSize</key>
+				<string>{49,52}</string>
+			</dict>
+		</dict>
+		<key>metadata</key>
+		<dict>
+			<key>format</key>
+			<integer>2</integer>
+			<key>textureFileName</key>
+			<string>Plist.png</string>
+			<key>realTextureFileName</key>
+			<string>Plist.png</string>
+			<key>size</key>
+			<string>{1024,512}</string>
+		</dict>
+		<key>texture</key>
+		<dict>
+			<key>width</key>
+			<integer>1024</integer>
+			<key>height</key>
+			<integer>512</integer>
+		</dict>
+	</dict>
+</plist>
