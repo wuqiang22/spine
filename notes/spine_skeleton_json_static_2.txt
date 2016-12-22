@@ -1,0 +1,387 @@
+Part1:spSkeletonJson
+
+typedef struct {
+	float scale;  //缩放 默认为1
+	spAttachmentLoader* attachmentLoader;   //纹理加载器，到时候初始化骨骼数据的时候 会通过该加载器去初始化 对应的骨骼区域信息
+	const char* const error;
+} spSkeletonJson;
+
+typedef struct {
+	spAttachmentLoader super; //真正的纹理加载器
+	spAtlas* atlas;  //指向包括纹理的一些信息,请参考spAtlas分析
+} spAtlasAttachmentLoader; 
+
+struct spAttachmentLoader {
+	const char* error1;
+	const char* error2;
+
+	const void* const vtable; //其实是_spAttachmentLoaderVtable
+#ifdef __cplusplus
+	spAttachmentLoader () :
+					error1(0),
+					error2(0),
+					vtable(0) {
+	}
+#endif
+};
+
+
+typedef struct _spAttachmentLoaderVtable { //定义了纹理加载的初始化函数 和 释放 函数
+	spAttachment* (*newAttachment) (spAttachmentLoader* self, spSkin* skin, spAttachmentType type, const char* name,
+			const char* path);
+	void (*dispose) (spAttachmentLoader* self);
+} _spAttachmentLoaderVtable;
+
+综合来说：spSkeletonJson是对_atlas 和_atlas信息加载的封装。
+
+加载器的创建:
+
+spAtlasAttachmentLoader* self = NEW(spAtlasAttachmentLoader);
+_spAttachmentLoader_init(SUPER(self), _spAttachmentLoader_deinit, _spAtlasAttachmentLoader_newAttachment);
+self->atlas = atlas;
+
+_spAtlasAttachmentLoader_newAttachment:负责altas中小图信息的加载和分析，来创建出骨骼数据中的骨骼区域信息
+_spAttachmentLoader_deinit:负责释放spAtlasAttachmentLoader的内存
+
+
+使用情况：spSkeletonJson* json = spSkeletonJson_create(_atlas);通过开始解析的spAtlas去初始化 spSkeletonJson。
+
+
+Part2:spSkeletonData
+
+typedef struct {
+	const char* version;
+	const char* hash;
+	float width, height;
+
+	int bonesCount; //骨骼数量
+	spBoneData** bones;//所有的骨骼信息
+
+	int slotsCount; //节点数量
+	spSlotData** slots;//所有的节点信息
+
+	int skinsCount;//皮肤数量
+	spSkin** skins;//所有的皮肤信息
+	spSkin* defaultSkin;//默认的皮肤信息
+
+	int eventsCount;//事件数量
+	spEventData** events;//所有的事件信息
+
+	int animationsCount;//动画数量
+	spAnimation** animations;//所有的动画信息
+
+	int ikConstraintsCount;// 还未知，下面对此不做分析
+	spIkConstraintData** ikConstraints;// 还未知,下面对此不做分析
+} spSkeletonData;
+spSkeletonData 是对spine骨骼动画的具体的信息定义
+
+2.1:spBoneData 骨骼数据
+
+//{ "name": "front_thigh", "parent": "hip", "length": 74.8, "x": -17.45, "y": -11.64, "rotation": -95.51, "color": "00ff04ff" }
+//color还未用到
+
+struct spBoneData {
+	const char* const name;//骨骼名字
+	spBoneData* const parent;//指向父骨骼
+	float length;//骨骼的长度
+	float x, y;//x,y
+	float rotation;//旋转
+	float scaleX, scaleY;//缩放
+	int/*bool*/inheritScale, inheritRotation;//是否继承父骨骼的旋转和缩放
+};
+
+
+2.2:spSlotData  节点数据
+
+//{ "name": "rear_upper_arm", "bone": "rear_upper_arm", "attachment": "rear_upper_arm" }
+
+typedef struct {
+	const char* const name;//节点名字
+	const spBoneData* const boneData;//指向节点属于的骨骼
+	const char* attachmentName;//默认的小图名字
+	float r, g, b, a;//颜色
+	int/*bool*/additiveBlending;//混合,待以后分析
+} spSlotData;
+
+
+2.3:spSkin 皮肤数据
+
+虽然骨骼数据中用的是spSkin,但是_spSkin才是真正的皮肤数据拥有者，spSkin只有一个名字而已，但是 SUB_CAST(_spSkin, self)，self 是spSkin，这样即可转化成_spSkin。
+
+
+typedef struct {
+	spSkin super;
+	_Entry* entries;  //指向该皮肤中的所有附载点,一个节点包括多个附载点
+} _spSkin;
+
+typedef struct {
+	const char* const name;//皮肤的名字
+} spSkin;
+
+
+"eye": {//"eye"是slot的名字
+	//eye_indifferent是附载点的名字,后面是这个附载点的一些静态数据,附载点的名字和小图的名字是一样的。
+	"eye_indifferent": { "x": 85.72, "y": -28.18, "rotation": -70.63, "width": 93, "height": 89 },===============>这就是一个_Entry
+	"eye_surprised": { "x": 85.72, "y": -28.18, "rotation": -70.63, "width": 93, "height": 89 }	  ===============>这就是一个_Entry
+}
+
+struct _Entry {
+	int slotIndex;//slot在所有slotData中的index
+	const char* name;//附载点的名字，也就是小图的名字
+	spAttachment* attachment; //动态创建出来的小图封装的信息
+	_Entry* next;//指向下一个_Entry
+};
+
+//slotIndex 和name 找到唯一的附载点。
+
+struct spAttachment {
+	const char* const name;//小图的名字
+	const spAttachmentType type;//小图类型,SP_ATTACHMENT_REGION为默认类型
+
+	const void* const vtable;
+};
+
+typedef enum {
+	SP_ATTACHMENT_REGION, SP_ATTACHMENT_BOUNDING_BOX, SP_ATTACHMENT_MESH, SP_ATTACHMENT_SKINNED_MESH
+} spAttachmentType;
+
+spAttachment是通过
+"eye_indifferent": { "x": 85.72, "y": -28.18, "rotation": -70.63, "width": 93, "height": 89 }
+来创建的,有这个数据还不行，还必须有加载器，就是spSkeletonJson中的。
+
+spAttachment其实是个父类，子类包括spRegionAttachment,spMeshAttachment,spSkinnedMeshAttachment,spBoundingBoxAttachment四种。
+根据type去具体的创建对应的子类。
+
+先分析spRegionAttachment
+
+struct spRegionAttachment {
+	spAttachment super;  //指向父类
+	const char* path;// 小图名字
+	float x, y, scaleX, scaleY, rotation, width, height;//在对应骨骼中的位置，缩放和大小
+	float r, g, b, a;//颜色
+
+	void* rendererObject;//spAtlasRegion,atlas中的小图信息
+	int regionOffsetX, regionOffsetY; /* Pixels stripped from the bottom left, unrotated. */  //按照注释的理解应该是小图在原图左下角的偏移，而Plist保存的是中心点的偏移
+	int regionWidth, regionHeight; /* Unrotated, stripped pixel size. */    //小图在大图中的大小
+	int regionOriginalWidth, regionOriginalHeight; /* Unrotated, unstripped pixel size. */  //原图的大小
+
+	float offset[8];  //有待分析
+	float uvs[8];  //8个uv坐标
+};
+
+x, y, scaleX, scaleY, rotation, width, height,r, g, b, a来自于：
+"eye_indifferent": { "x": 85.72, "y": -28.18, "rotation": -70.63, "width": 93, "height": 89 }
+
+
+2.4:spEventData 事件数据
+
+"headBehind": { "int": 5, "float": 6, "string": "setup" },
+
+struct spEventData {
+	const char* const name;//事件名字
+	int intValue;
+	float floatValue;
+	const char* stringValue;
+};
+
+
+2.5:spAnimation 动画（动作）数据
+
+typedef struct {
+	const char* const name;//动作名字
+	float duration;//持续的时间
+
+	int timelinesCount;//时间轴数量
+	spTimeline** timelines;//所有的 时间轴
+} spAnimation;
+
+
+struct spTimeline {
+	const spTimelineType type;
+
+	const void* const vtable;
+};
+
+一个动画就意味着各个画面在不停的变换，骨骼数据在变，每个节点显示的小图在变，这些变的东西都被封装成时间轴。
+
+(1):先看节点是如何被封装成时间轴的
+
+一个节点可以有多个时间轴，分成两个类型：spColorTimeline和spAttachmentTimeline
+spColorTimeline是根据时间来变换颜色，而spAttachmentTimeline是根据时间来变换显示的小图
+
+spColorTimeline：以后分析
+spAttachmentTimeline:
+
+typedef struct {
+	spTimeline super;
+	int const framesCount;//一共有多少帧
+	float* const frames; /* time, ... */   //各个帧都有多长时间
+	int slotIndex;//所在的slot在所有的slots中的index
+	const char** const attachmentNames;  //在该slot的所有帧的小图名字
+} spAttachmentTimeline;
+
+
+struct spTimeline {//所有的时间轴的父类,主要有时间轴类型 和时间轴的应用函数 和时间轴的释放内存函数
+	const spTimelineType type;//时间轴类型
+
+	const void* const vtable;//_spTimelineVtable
+};
+
+typedef struct _spTimelineVtable {
+	void (*apply) (const spTimeline* self, spSkeleton* skeleton, float lastTime, float time, spEvent** firedEvents,  该timeline的数据应用函数
+			int* eventsCount, float alpha);
+	void (*dispose) (spTimeline* self);//该timeline内存的释放函数
+} _spTimelineVtable;
+
+typedef enum {
+	SP_TIMELINE_SCALE,
+	SP_TIMELINE_ROTATE,
+	SP_TIMELINE_TRANSLATE,
+	SP_TIMELINE_COLOR,
+	SP_TIMELINE_ATTACHMENT,
+	SP_TIMELINE_EVENT,
+	SP_TIMELINE_DRAWORDER,
+	SP_TIMELINE_FFD,
+	SP_TIMELINE_IKCONSTRAINT
+} spTimelineType;
+
+对spAttachmentTimeline来说vtable的两个函数就是：_spAttachmentTimeline_apply和_spAttachmentTimeline_dispose
+spAttachmentTimeline的初始化：_spTimeline_init(SUPER(self), SP_TIMELINE_ATTACHMENT, _spAttachmentTimeline_dispose, _spAttachmentTimeline_apply);
+
+void _spAttachmentTimeline_apply (const spTimeline* timeline, spSkeleton* skeleton, float lastTime, float time,
+		spEvent** firedEvents, int* eventsCount, float alpha) {
+	int frameIndex;
+	const char* attachmentName;
+	spAttachmentTimeline* self = (spAttachmentTimeline*)timeline;
+
+	if (time < self->frames[0]) {
+		if (lastTime > time) _spAttachmentTimeline_apply(timeline, skeleton, lastTime, (float)INT_MAX, 0, 0, 0);
+		return;
+	} else if (lastTime > time) /**/
+		lastTime = -1;
+
+	frameIndex = time >= self->frames[self->framesCount - 1] ?
+		self->framesCount - 1 : binarySearch1(self->frames, self->framesCount, time) - 1; //根据lastTime和time找到对应的帧
+	if (self->frames[frameIndex] < lastTime) return; //表示lastTime已经到了该帧，不需要更新新的附载点
+
+	attachmentName = self->attachmentNames[frameIndex];//拿到该帧slot需要显示的附载点名字(即小图名字)
+	spSlot_setAttachment(skeleton->slots[self->slotIndex],
+			attachmentName ? spSkeleton_getAttachmentForSlotIndex(skeleton, self->slotIndex, attachmentName) : 0);//设置该slot的新的显示的附载点
+}
+
+void _spAttachmentTimeline_dispose (spTimeline* timeline) {  //释放该timeline中所有在堆申请的内存
+	spAttachmentTimeline* self = SUB_CAST(spAttachmentTimeline, timeline);
+	int i;
+
+	_spTimeline_deinit(timeline);
+
+	for (i = 0; i < self->framesCount; ++i)
+		FREE(self->attachmentNames[i]);
+	FREE(self->attachmentNames);
+	FREE(self->frames);
+	FREE(self);
+}
+
+(2)骨骼封装成时间轴
+
+骨骼数据格式为：
+
+"bones": {  //动画的骨骼节点开始
+	"head": {	//骨骼名字
+		"rotate": [//rotate时间轴
+			{ "time": 0, "angle": -2.82 },
+			{ "time": 0.1333, "angle": -28.74 },
+			{ "time": 0.2333, "angle": 11.42 },
+			{ "time": 0.3333, "angle": -50.24 },
+			{ "time": 0.4, "angle": -72.66, "curve": "stepped" },
+			{ "time": 0.4333, "angle": -72.66 },
+			{ "time": 0.5, "angle": -20.24 },
+			{ "time": 0.5666, "angle": -85.28, "curve": "stepped" },
+			{ "time": 0.9333, "angle": -85.28, "curve": "stepped" },
+			{ "time": 2.2333, "angle": -85.28 },
+			{ "time": 2.5, "angle": -51.96, "curve": "stepped" },
+			{ "time": 4.5333, "angle": -51.96 },
+			{ "time": 4.6666, "angle": -85.28 }
+		],
+		"translate": [//位移时间轴
+			{ "time": 0, "x": 0, "y": 0 }
+		],
+		"scale": [//缩放时间轴
+			{ "time": 0, "x": 1, "y": 1 }
+		]		
+	},
+	.....
+	
+}
+			
+一个骨骼可以有多个时间轴,分成三种：spRotateTimeline,spTranslateTimeline和spScaleTimeline
+
+typedef struct {
+	spTimeline super;
+	float* curves; /* type, x, y, ... */
+} spCurveTimeline;
+
+typedef struct spBaseTimeline {
+	spCurveTimeline super; //这个时间轴还需要以后分析
+	int const framesCount;//该时间轴的帧数
+	//frames对不同的时间轴意义不一样，对于旋转时间轴，数据依次为：时间，旋转的角度;对于位移时间轴和缩放时间轴，数据依次为:时间,x,y
+	float* const frames; /* time, angle, ... for rotate. time, x, y, ... for translate and scale. */  
+	int boneIndex;//该时间轴描述的骨骼在所有骨骼数据中的index
+} spRotateTimeline;
+
+typedef struct spBaseTimeline spTranslateTimeline;
+typedef struct spBaseTimeline spScaleTimeline;
+
+(3):事件封装成事件时间轴
+
+"events": [
+	{ "time": 0, "name": "headPop", "int": 0, "float": 0, "string": "pop.wav" },============>对应一个spEvent
+	{ "time": 1, "name": "headBehind", "int": 7, "float": 8, "string": "animate" },
+	{ "time": 2, "name": "headAttach", "int": 0, "float": 0, "string": "attach.wav" }
+]
+
+typedef struct {
+	spTimeline super;
+	int const framesCount;  //总帧数
+	float* const frames; /* time, ... */  //有事件的帧的时间
+	spEvent** const events;		//上面有事件的帧的事件数据
+} spEventTimeline;
+
+
+struct spEvent {
+	spEventData* const data;  //根据name在所有的事件数据中拿到spEventData
+	int intValue;
+	float floatValue;
+	const char* stringValue;
+};
+
+上面的events被封装成了动作的一个事件时间轴，有3个会触发事件的帧，frames中保存了三个触发事件帧的时间,events中保存了三个被触发的事件的数据
+"int": 0, "float": 0, "string": "pop.wav" 被分别封装进了spEvent的intValue,floatValue,stringValue。
+
+总结：
+spSkeletonJson：封装了有大图资源的信息和小图资源的信息spAtlas  , 根据小图信息去创建附载到slot上的附载点(Attachment)的初始化函数和销毁释放内存函数,缩放参数，报错信息。
+				在初始化真正的骨骼数据的时候，spSkeletonJson的创建attachment函数会去创建四种attachment。
+				
+spSkeletonData: 包括了所有的节点静态数据，所有的骨骼静态数据，所有的动画静态数据，所有的事件静态数据，所有的皮肤静态数据。
+spSlotData:节点的静态数据,包括节点slot的名字，指向节点slot所在的骨骼的spSlotData，slot的初始显示的附载点attachment,节点的rgba颜色，混合模式(有待分析)
+spBoneData:骨骼的静态数据，包括骨骼的名字，骨骼的长度，初始缩放，初始位置，初始旋转，是否继承父骨骼的缩放和旋转，指向父骨骼的spBoneData
+spSkin,_spSkin:_spSkin包括了spSkin,spSkin只是有一个skin的名字而已，_spSkin还包括了所有的附载点项，一个节点可以有多个附载点项，唯一决定附载点项的是所在的节点的 index 和附载点的名字
+			   附载点项包括：所在的节点的index，附载点的名字(和spAtlas的小图名字是一样的)，附载Attachment和指向下一个附载点项。附载Attachment是由spSkeletonJson中的创建函数来创建的。
+			   一共有四种附载的Attachment。
+spEventData:事件的静态数据，包括：事件的名字，事件的inValue,floatValue,stringValue的初始值
+spAnimation:动画的静态数据，包括：动画的持续时间，动画的名字，动画的时间轴个数和所有的时间轴信息spTimeline。时间轴有很多种，但是他们的父类是spTimeline,不同的时间轴有他们自己的
+			创建函数和应用函数，应用函数是根据当前的时间来找到对应的帧，将该帧的信息应用到骨骼上就算是完成了该帧需要做的事情。
+			时间轴的数量计算是：所有节点的所有attachment时间轴和颜色时间轴，所有骨骼的所有旋转时间轴，位移时间轴和缩放时间轴，一个事件时间轴。
+			attachment时间轴:根据时间来更新对应的节点的attachment（附载点），这个附载点是具体渲染的小图。
+			颜色时间轴：根据时间来更新对应的节点的颜色。
+			旋转时间轴：根据时间来更新对应的骨骼的旋转角度。
+			位移时间轴：根据时间来更新对应的骨骼的位移。
+			缩放时间轴：根据时间来更新对应的骨骼的缩放。
+			事件时间轴：根据时间来触发对应的事件。
+			
+			动画的持续时间是取所有时间轴中持续事件最长的时间作为动画的持续时间。
+
+
+
+
+

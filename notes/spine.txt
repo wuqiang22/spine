@@ -1,0 +1,154 @@
+spine显示问题：
+SkeletonRenderer继承自Node,但是spine的动画渲染并不是渲染SkeletonRenderer，而是渲染在spine动画里的slots。每个slot有它的attachment，attachment的renderObject是region，区域信息是在
+atlas文件中的每个部位,所以具体是渲染attachment,在得到了纹理，attachment的位置，旋转，颜色等等信息就可以传入数据给opengl了
+
+//区域信息
+struct spAtlasRegion {
+	const char* name;
+	int x, y, width, height;
+	float u, v, u2, v2;
+	int offsetX, offsetY;
+	int originalWidth, originalHeight;
+	int index;
+	int/*bool*/rotate;
+	int/*bool*/flip;
+	int* splits;
+	int* pads;
+
+	spAtlasPage* page;   //这个里面就有需要渲染的纹理,在初始化spAtlas的时候，就已经加载了纹理进内存，请看_spAtlasPage_createTexture
+
+	spAtlasRegion* next;
+};
+
+
+获取动画的boundingBox，原理同渲染一样，拿到每个slot的attachment,通过slot很容易知道bone，给attachment的位置和bone的各种信息 可以知道该 attachment的所有点信息，
+通过比较所有的点可以找到最外围的几个点
+
+
+skin,slot,attachment之前的联系。
+
+typedef struct {
+	const char* const name;  //skin的名字
+} spSkin;
+
+typedef struct {
+	spSkin super;
+	_Entry* entries;  //所有的节点
+} _spSkin;
+
+struct _Entry {
+	int slotIndex;		//slot的index
+	const char* name;	  //attachment的名字
+	spAttachment* attachment;  //attachment信息
+	_Entry* next;  //下一个节点
+};
+
+如何根据attachmentName和slotName拿到对应的attachment？
+
+所有的slotData数据和封装在了skeletonData里面，
+slotName---->slotIndex（遍历slotData，找到index）
+根据上面的关系通过比较name和attachmentName很容易找到attachment,遍历entries，_spSkin封装在哪里呢？--->spSkeleton
+
+
+spine换皮原理：
+
+接口：bool SkeletonRenderer::setSkin (const std::string& skinName)。
+更换所有的slot的attachment,新的attachment是由 新的皮肤决定的。
+
+void spSkeleton_setSkin (spSkeleton* self, spSkin* newSkin) {
+	if (newSkin) {
+		if (self->skin)
+			spSkin_attachAll(newSkin, self, self->skin);
+		else {
+			/* No previous skin, attach setup pose attachments. */
+			int i;
+			for (i = 0; i < self->slotsCount; ++i) {
+				spSlot* slot = self->slots[i];
+				if (slot->data->attachmentName) {
+					spAttachment* attachment = spSkin_getAttachment(newSkin, i, slot->data->attachmentName);
+					if (attachment) spSlot_setAttachment(slot, attachment);
+				}
+			}
+		}
+	}
+	CONST_CAST(spSkin*, self->skin) = newSkin;
+}
+
+
+setAnimation，addAnimation和setMix分析
+
+setAnimation：setAnimation (int trackIndex, const std::string& name, bool loop) 接口
+
+设置trackInex这个位置当前的动作为name,如果在trackIndex正在有其他动作，那么打断当前动作，替换成name对应的动作,trackIndex槽动作为name。
+
+addAnimation:addAnimation (int trackIndex, const std::string& name, bool loop, float delay)
+
+为trackInex槽后添加name动作，延迟delay播放，并且在trackIndex槽内位于name动作之前的所有动作播放完成之后才播放name动作。delay会受到mix的影响。
+
+setMix: setMix (const std::string& fromAnimation, const std::string& toAnimation, float duration) 
+
+指定fromAnimation和toAnimation为混合动作，添加fromAnimation到spAnimationStateData的_FromEntry中，并且把toAnimation添加到_FromEntry的toEntries中。结构如下：
+
+typedef struct {
+	spSkeletonData* const skeletonData;
+	float defaultMix;
+	const void* const entries;  //动作状态数据的_FromEntry集合
+} spAnimationStateData;
+
+struct _FromEntry {
+	spAnimation* animation;
+	_ToEntry* toEntries; //所有与之混合的动作_ToEntry
+	_FromEntry* next;
+};
+
+
+struct _ToEntry {
+	spAnimation* animation;
+	float duration;  
+	_ToEntry* next; //链表
+};
+
+我的理解_FromEntry和_ToEntry只是为了记录混合动作关系。
+
+setAnimation也设计到Entry，只不过这个Entry是spTrackEntry
+
+struct spAnimationState {
+	spAnimationStateData* const data;
+	float timeScale;
+	spAnimationStateListener listener;
+
+	int tracksCount;
+	spTrackEntry** tracks;  //记录所有槽的动作
+
+	void* rendererObject;
+};
+
+
+struct spTrackEntry {
+	spAnimationState* const state;
+	spTrackEntry* next;//同一个槽内，链表后一个
+	spTrackEntry* previous;
+	spAnimation* animation;  //封装动作
+	int/*bool*/loop;
+	float delay, time, lastTime, endTime, timeScale;  //一些其他数据  time:该动作当前播放的时间。lasttime:该动作前一针播放的时间,timeScale:时间调整,endtime:动作终止时间
+	spAnimationStateListener listener;
+	float mixTime, mixDuration, mix; //各种混合时间 有待分析####################################3
+
+	void* rendererObject;
+};
+
+
+setAnimation和addAnimation改变trackIndex试试效果。分析多个trackIndex同时播放的效果
+
+同时setAnimation播放动作，trackIndex相同，较之前的动作终止，播放后面一个动作，如果trackIndex不同，那么会同时播放几个动作，slot受两个动作的骨骼影响。
+
+ skeletonNode:setAnimation(2, "walk", true)
+ skeletonNode:addAnimation(1,"death",true,10.0)
+ 
+ 两个动作同时播放，而且10.0的延时没用。
+  skeletonNode:setAnimation(2, "walk", true)
+ skeletonNode:addAnimation(2,"death",true,10.0)
+ 
+ 这样10.0才有用，第二个动作播放的时候，第一个终止。
+ 
+ 

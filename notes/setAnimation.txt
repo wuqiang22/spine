@@ -1,0 +1,47 @@
+setAnimation，addAnimation和setMix分析
+setAnimation：setAnimation (int trackIndex, const std::string& name, bool loop) 接口
+设置trackInex这个位置当前的动作为name,如果在trackIndex正在有其他动作，那么打断当前动作，替换成name对应的动作,trackIndex槽动作为name。
+addAnimation:addAnimation (int trackIndex, const std::string& name, bool loop, float delay)
+为trackInex槽后添加name动作，延迟delay播放，并且在trackIndex槽内位于name动作之前的所有动作播放完成之后才播放name动作。delay会受到mix的影响。
+setMix: setMix (const std::string& fromAnimation, const std::string& toAnimation, float duration)
+指定fromAnimation和toAnimation为混合动作，添加fromAnimation到spAnimationStateData的_FromEntry中，并且把toAnimation添加到_FromEntry的toEntries中。结构如下：
+typedef struct {
+ spSkeletonData* const skeletonData;
+ float defaultMix;
+ const void* const entries;  //动作状态数据的_FromEntry集合
+} spAnimationStateData;
+struct _FromEntry {
+ spAnimation* animation;
+ _ToEntry* toEntries; //所有与之混合的动作_ToEntry
+ _FromEntry* next;
+};
+
+struct _ToEntry {
+ spAnimation* animation;
+ float duration;  
+ _ToEntry* next; //链表
+};
+我的理解_FromEntry和_ToEntry只是为了记录混合动作关系。
+setAnimation也设计到Entry，只不过这个Entry是spTrackEntry
+struct spAnimationState {
+ spAnimationStateData* const data;
+ float timeScale;
+ spAnimationStateListener listener;
+ int tracksCount;
+ spTrackEntry** tracks;  //记录所有槽的动作
+ void* rendererObject;
+};
+
+struct spTrackEntry {
+ spAnimationState* const state;
+ spTrackEntry* next;//同一个槽内，链表后一个
+ spTrackEntry* previous;
+ spAnimation* animation;  //封装动作
+ int/*bool*/loop;
+ float delay, time, lastTime, endTime, timeScale;  //一些其他数据  time:该动作当前播放的时间。lasttime:该动作前一针播放的时间,timeScale:时间调整,endtime:动作终止时间
+ spAnimationStateListener listener;
+ float mixTime, mixDuration, mix; //各种混合时间 有待分析####################################3
+ void* rendererObject;
+};
+
+setAnimation和addAnimation改变trackIndex试试效果。分析多个trackIndex同时播放的效果

@@ -1,0 +1,102 @@
+spSkeleton,_spSkeleton：包括了骨骼动画的所有静态数据和骨骼动画的所有动态数据
+
+
+struct spSkeleton {
+	spSkeletonData* const data;//骨骼动画的静态数据，分析atlas,json文件得到的。
+
+	int bonesCount;//静态数据中得来的
+	spBone** bones;//包括动态的骨骼数据和静态的骨骼数据
+	spBone* const root;
+
+	int slotsCount;//静态数据中得来的
+	spSlot** slots;//包括动态的节点数据
+	spSlot** drawOrder;
+
+	int ikConstraintsCount;
+	spIkConstraint** ikConstraints;
+
+	spSkin* const skin;
+	float r, g, b, a;//整个骨骼动画的rgba
+	float time;  //当前的时间
+	int/*bool*/flipX, flipY; //整个骨骼动画的flipX,flipY
+	float x, y;//整个骨骼动画的x,y
+};
+
+typedef struct {
+	spSkeleton super;
+
+	int boneCacheCount;
+	int* boneCacheCounts;
+	spBone*** boneCache;
+} _spSkeleton;
+
+
+struct spBone {//包括了动态的骨骼数据和静态的骨骼数据
+	spBoneData* const data;//骨骼的静态数据
+	struct spSkeleton* const skeleton;//指向总的骨骼动画
+	spBone* const parent;		//指向父骨骼
+	float x, y;			//动态的x,y 初始值为data 中的值。
+	float rotation, rotationIK;//动态的rotation,rotationIK(还有待分析) 初始值为data 中的值。
+	float scaleX, scaleY;	//动态的scaleX,scaleY  初始值为data 中的值。
+	
+	//下面的有待分析
+	float const m00, m01, worldX; /* a b x */
+	float const m10, m11, worldY; /* c d y */
+	float const worldRotation;
+	float const worldScaleX, worldScaleY;
+};
+
+在创建每个spBone的时候，都会对它做setUp姿势，设置起始数据
+
+void spBone_setToSetupPose (spBone* self) {
+	self->x = self->data->x;
+	self->y = self->data->y;
+	self->rotation = self->data->rotation;
+	self->rotationIK = self->rotation;
+	self->scaleX = self->data->scaleX;
+	self->scaleY = self->data->scaleY;
+}
+
+typedef struct {
+	spSlot super;//真正的节点动态信息
+	float attachmentTime;//改attachment被加载显示在slot的时间
+} _spSlot;
+
+
+typedef struct spSlot {
+	spSlotData* const data;//节点的静态信息
+	spBone* const bone;//指向所在的动态骨骼
+	float r, g, b, a;//动态的rgba,初始值为data 中的值。
+	spAttachment* const attachment;//附载点,起始的附载点在slot的静态数据中有定义
+	
+	//下面的有待分析
+	int attachmentVerticesCapacity;
+	int attachmentVerticesCount;
+	float* attachmentVertices;
+} spSlot;
+在创建每个spSlot的时候，都会对它做setUp姿势，设置起始数据
+
+void spSlot_setToSetupPose (spSlot* self) {
+	spAttachment* attachment = 0;
+
+	self->r = self->data->r;
+	self->g = self->data->g;
+	self->b = self->data->b;
+	self->a = self->data->a;
+
+	if (self->data->attachmentName) {
+		/* Find slot index. */
+		int i;
+		for (i = 0; i < self->bone->skeleton->data->slotsCount; ++i) {
+			if (self->data == self->bone->skeleton->data->slots[i]) {
+				attachment = spSkeleton_getAttachmentForSlotIndex(self->bone->skeleton, i, self->data->attachmentName);
+				break;
+			}
+		}
+	}
+	spSlot_setAttachment(self, attachment);
+}
+
+
+
+

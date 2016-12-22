@@ -1,0 +1,44 @@
+
+
+struct spAtlas {
+	spAtlasPage* pages;  //多个png纹理资源，每个资源对应一个spAtlasPage
+	spAtlasRegion* regions;//所有png纹理的各个小图信息
+
+	void* rendererObject;
+};
+
+spAtlas就是包括了这个动画所有大图的一些信息 和大图中的每个小图的信息
+
+
+struct spAtlasPage {  //一个纹理资源的一些信息
+	const spAtlas* atlas;	
+	const char* name;	//纹理名字 xxx.png
+	spAtlasFormat format;		//纹理的像素存储格式
+	spAtlasFilter minFilter, magFilter;	//纹理的像素过滤
+	spAtlasWrap uWrap, vWrap;	
+
+	void* rendererObject; //Texture2D,加载到内存中的纹理
+	int width, height;	//纹理图片的大小
+
+	spAtlasPage* next;//下一个纹理资源信息
+};
+
+
+struct spAtlasRegion {  //小图信息
+	const char* name;   //小图的名字
+	int x, y, width, height;//小图在大图的矩形区域
+	float u, v, u2, v2;//小图计算出来的左上角和右下角的uv坐标,左上角(u,v),右下角(u2,v2)
+	int offsetX, offsetY;//和Plist的offset类似，这个小图是截过周边像素之后的，要还原原图，小图在原图中的时候小图的中心点和原图中心点之差，详细请参考Sprite 的分析
+	int originalWidth, originalHeight;//同上，小图的原始大小，详情请参考Sprite的分析
+	int index;//  暂时不知道意思
+	int/*bool*/rotate;//是否顺时针旋转，也可参考Sprite的分析
+	int/*bool*/flip;//是否翻转
+	int* splits;//暂时不知道意思
+	int* pads;//暂时不知道意思
+
+	spAtlasPage* page;	//指向这个小图属于的大图
+
+	spAtlasRegion* next;//指向下一个小图信息，这两个小图应该是在同一个大图中的
+};
+
+spAtlasRegion就是一些小图的信息，和SpriteFrame中的信息类似。

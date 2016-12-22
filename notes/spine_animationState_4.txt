@@ -1,0 +1,401 @@
+
+typedef struct {
+	spAnimationState super;
+	spEvent** events;//事件 timeline中通过对event进行赋值，来触发帧事件
+
+	spTrackEntry* (*createTrackEntry) (spAnimationState* self);  //创建track
+	void (*disposeTrackEntry) (spTrackEntry* entry);//销毁track
+} _spAnimationState;
+
+struct spAnimationState {   //当前的动作管理器
+	spAnimationStateData* const data;  //动作混合的数据配置
+	float timeScale;//时间比例
+	spAnimationStateListener listener;//整个动画的事件回调，在这里面对Start,End,Compelete三种分别做了处理
+
+	int tracksCount;//track的个数，track可以看做是一个层
+	spTrackEntry** tracks;//所有的层,每个层中可以有多个动画，没两个层互不影响
+
+	void* rendererObject;  //SkeletonAnimation
+};
+
+spAnimationStateData 可以同时被多个spAnimationState拥有，他们拥有相同的混合配置
+typedef struct {
+	spSkeletonData* const skeletonData;  //spine骨骼动画的所有配置数据和动态数据
+	float defaultMix;//默认的混合时间，好像目前没有对它的设置
+	const void* const entries;//指定了所有动画两两之间的混合时间
+} spAnimationStateData;
+
+
+spine的所有事件回调函数原型：
+typedef void (*spAnimationStateListener) (spAnimationState* state, int trackIndex, spEventType type, spEvent* event,
+		int loopCount);
+	
+typedef struct spTrackEntry spTrackEntry;  //一个动作的状态管理器
+struct spTrackEntry {
+	spAnimationState* const state;  //指向当前所有层的动作管理器
+	//指向下一个track,一般是addAnimation后两个trackIndex相同，才会将新的设置成当前的next
+	spTrackEntry* next;
+	//在开启了动作混合的时候，如果下一个动作action2已经开始了，那么为了达到混合的效果，之前动作action1并不会马上释放，
+	//而是等之前动作action1和现在动作action2混合完成后，才释放。
+	
+	//如果之前动作action1已经是处于混合的状态，与之混合的动作为action0,那么和action2混合的动作不一定是action1,
+	//应该根据action1执行的混合时间比例来决定，如果action1的已经执行的混合时间比例还未过半，那么应该选择action0,
+	//反之选择action1,未被选择的动作会被马上释放。
+	spTrackEntry* previous;//指向前一个track
+	spAnimation* animation;//这个track的动作
+	int/*bool*/loop;//当前的这个动作是否是循环
+	
+	//delay:之前的动作持续了delay的时间才开始这个动作
+	//time:当前动作已经持续了的时间
+	/lastTime:上一个时刻，当前动作持续了的时间
+	//endTime:这个动作的终止时间
+	//timeScale:动作的时间比例
+	float delay, time, lastTime, endTime, timeScale;
+	//可以单独对这个动作注册监听器,只会响应此动作的Start,End,Compelete事件
+	spAnimationStateListener listener;
+	//mixTime:已经混合的时间
+	//mixDuration:此动作的混合时长
+	//mix:混合系数，设置此动作在混合的时候占的比例，默认为1
+	float mixTime, mixDuration, mix;
+	
+	void* rendererObject;//_TrackEntryListeners
+};
+
+typedef struct _TrackEntryListeners {//track的各个监听器的封装
+	StartListener startListener;
+	EndListener endListener;
+	CompleteListener completeListener;
+	EventListener eventListener;
+} _TrackEntryListeners;
+
+setAnimation分析：
+
+API:spTrackEntry* SkeletonAnimation::setAnimation (int trackIndex, const std::string& name, bool loop);
+
+trackIndex:返回的trackEntry的index;name:动作名,loop:此动作是否循环
+
+spTrackEntry* spAnimationState_setAnimation (spAnimationState* self, int trackIndex, spAnimation* animation, int/*bool*/loop) {
+	_spAnimationState* internal = SUB_CAST(_spAnimationState, self);//所有动作的管理器
+
+	spTrackEntry* entry;//新设置的动作管理器
+	//找到所有动作中track = trackIndex的链表头，如果最高的trackCount<trackIndex，那么申请新的内存,trackCount = trackIndex
+	spTrackEntry* current = _spAnimationState_expandToIndex(self, trackIndex);
+	//之前在trackIndex槽的槽头，如果有，那么释放改槽内的除槽头的所有动作，当前的槽头用来和新的动作进行混合
+	if (current) _spAnimationState_disposeAllEntries(self, current->next);
+
+	entry = internal->createTrackEntry(self);//创建新的动作管理器
+	entry->animation = animation;
+	entry->loop = loop;
+	entry->endTime = animation->duration;
+	_spAnimationState_setCurrent(self, trackIndex, entry);//将新的动作管理器设置成这个槽的槽头
+	return entry;
+}
+
+//设置index槽的的槽头,entry为
+void _spAnimationState_setCurrent (spAnimationState* self, int index, spTrackEntry* entry) {
+	_spAnimationState* internal = SUB_CAST(_spAnimationState, self);
+
+	spTrackEntry* current = _spAnimationState_expandToIndex(self, index);
+	if (current) {//如果已经有槽头了
+		spTrackEntry* previous = current->previous;//此槽头在混合中,拿到和当前槽头的混合动作
+		current->previous = 0;
+
+		if (current->listener) current->listener(self, index, SP_ANIMATION_END, 0, 0);//当前动作管理器通知动作结束
+		if (self->listener) self->listener(self, index, SP_ANIMATION_END, 0, 0);//所有的动作状态管理器通知结束动作
+		
+		//拿到新的动作的混合时长
+		entry->mixDuration = spAnimationStateData_getMix(self->data, current->animation, entry->animation);
+		
+		if (entry->mixDuration > 0) {
+			entry->mixTime = 0;//如果有混合时长，当前的混合时间重置为0
+			/* If a mix is in progress, mix from the closest animation. */
+			//如果槽头在混合中，比较槽头和与其混合的动作哪个完成的混合比例高，取其高者为与entry一起混合的动作
+			//比例计算：mixTime/mixDuration，当前以及混合的时间/总的混合时长
+			if (previous && current->mixTime / current->mixDuration < 0.5f) {
+				entry->previous = previous;
+				previous = current;
+			} else
+				entry->previous = current;
+		} else
+			internal->disposeTrackEntry(current);
+
+		if (previous) internal->disposeTrackEntry(previous);  //释放另外一个没有参与混合的动作
+	}
+
+	self->tracks[index] = entry;//设置新的动作管理器为新的槽头
+
+	if (entry->listener) {
+		entry->listener(self, index, SP_ANIMATION_START, 0, 0);  //新的动作管理器 通知动作开始
+		if (self->tracks[index] != entry) return;
+	}
+	
+	//self:spAnimationState
+	if (self->listener) self->listener(self, index, SP_ANIMATION_START, 0, 0);//所有的动作状态管理器通知结束动作
+}
+
+
+addAnimation分析：
+
+API:spTrackEntry* SkeletonAnimation::addAnimation (int trackIndex, const std::string& name, bool loop, float delay);
+
+delay:延迟时长，如果 >0 ,那么此动作会在上一个动作开始了delay时长后开始；
+	  如果<=0,那么动作会在上一个动作结束前delay*-1后开始
+
+
+spTrackEntry* spAnimationState_addAnimation (spAnimationState* self, int trackIndex, spAnimation* animation, int/*bool*/loop,
+		float delay) {
+	_spAnimationState* internal = SUB_CAST(_spAnimationState, self);
+	spTrackEntry* last;
+
+	spTrackEntry* entry = internal->createTrackEntry(self);
+	entry->animation = animation;
+	entry->loop = loop;
+	entry->endTime = animation->duration;
+	
+	//entry设置到trackIndex槽的槽尾
+	last = _spAnimationState_expandToIndex(self, trackIndex);
+	if (last) {
+		while (last->next)
+			last = last->next;
+		last->next = entry;
+	} else
+		self->tracks[trackIndex] = entry;
+		
+	
+	//设置entry的delay时间
+	if (delay <= 0) {
+		if (last)
+			//混合开始前的delay时刻 开始animation动作
+			delay += last->endTime - spAnimationStateData_getMix(self->data, last->animation, animation);
+		else
+			delay = 0;
+	}
+	entry->delay = delay;
+	
+	//entry->delay:表示entry是在上一个动作开始了delay后才开始此动作
+
+	return entry;
+}
+
+//所有的槽中心管理器的更新
+void spAnimationState_update (spAnimationState* self, float delta) {
+	int i;
+	float previousDelta;
+	delta *= self->timeScale;
+	for (i = 0; i < self->tracksCount; ++i) {
+		spTrackEntry* current = self->tracks[i];
+		if (!current) continue;
+
+		current->time += delta * current->timeScale;//槽头的动作节点持续了的时间
+		if (current->previous) {//如果当前槽头节点存在混合节点
+			previousDelta = delta * current->previous->timeScale;//得到混合节点经过的时间
+			current->previous->time += previousDelta;//更新混合节点持续的时间
+			current->mixTime += previousDelta;//更新混合节点的混合时间
+		}
+
+		if (current->next) {//如果槽头之后还有动作
+			//这里其实更新下一个动作的时间并没有什么意义，用个临时变量也ok，在动作真正开始的时候time 会重置为0
+			current->next->time = current->lastTime - current->next->delay;
+			//lastTime:上一个时刻持续的时间，如果已经持续了delay，开始新的动作
+			if (current->next->time >= 0) _spAnimationState_setCurrent(self, i, current->next);
+		} else {
+			/* End non-looping animation when it reaches its end time and there is no next entry. */
+			//如果槽头节点动作不循环，已经运行了超过了总的时长，没有新的动作接上，清除i槽。
+			if (!current->loop && current->lastTime >= current->endTime) spAnimationState_clearTrack(self, i);
+		}
+	}
+}
+
+//所有的槽中心管理器的应用
+void spAnimationState_apply (spAnimationState* self, spSkeleton* skeleton) {
+	_spAnimationState* internal = SUB_CAST(_spAnimationState, self);
+
+	int i, ii;
+	int eventsCount;
+	int entryChanged;
+	float time;
+	spTrackEntry* previous;
+	for (i = 0; i < self->tracksCount; ++i) {
+		spTrackEntry* current = self->tracks[i];
+		if (!current) continue;
+
+		eventsCount = 0;
+
+		time = current->time;
+		if (!current->loop && time > current->endTime) time = current->endTime;
+
+		previous = current->previous;
+		if (!previous) {//当前槽头节点动作不在混合
+			//spAnimation_apply和spAnimation_mix内部实现其实是一样的，只不过mix中有比例而已。
+			if (current->mix == 1) {
+				spAnimation_apply(current->animation, skeleton, current->lastTime, time,
+					current->loop, internal->events, &eventsCount);
+			} else {
+				spAnimation_mix(current->animation, skeleton, current->lastTime, time,
+					current->loop, internal->events, &eventsCount, current->mix);
+			}
+		} else {//正在混合中
+			//alpha表示槽头节点的混合动作的混合系数
+			float alpha = current->mixTime / current->mixDuration * current->mix;
+
+			float previousTime = previous->time;
+			if (!previous->loop && previousTime > previous->endTime) previousTime = previous->endTime;
+			//先应用混合的另外一个动作，0,0,表示不触发拿另外一个动作的事件
+			spAnimation_apply(previous->animation, skeleton, previousTime, previousTime, previous->loop, 0, 0);
+
+			if (alpha >= 1) {
+				alpha = 1;
+				internal->disposeTrackEntry(current->previous);//如果槽头节点混合系数达到了1，结束混合
+				current->previous = 0;
+			}
+			//其次应用槽头节点的动作
+			spAnimation_mix(current->animation, skeleton, current->lastTime, time,
+				current->loop, internal->events, &eventsCount, alpha);
+		}
+	
+	
+		//在上面如果事件timeline对internal->events进行了设置，那么就会触发事件的派发
+		entryChanged = 0;
+		for (ii = 0; ii < eventsCount; ++ii) {
+			spEvent* event = internal->events[ii];
+			if (current->listener) {
+				current->listener(self, i, SP_ANIMATION_EVENT, event, 0);  //track槽派发帧事件
+				if (self->tracks[i] != current) {
+					entryChanged = 1;
+					break;
+				}
+			}
+			if (self->listener) {
+				self->listener(self, i, SP_ANIMATION_EVENT, event, 0);  //中心状态管理器派发帧事件
+				if (self->tracks[i] != current) {
+					entryChanged = 1;
+					break;
+				}
+			}
+		}
+		if (entryChanged) continue;
+		
+		//检测是否完成动作
+		/* Check if completed the animation or a loop iteration. */
+		if (current->loop ? (FMOD(current->lastTime, current->endTime) > FMOD(time, current->endTime))
+				: (current->lastTime < current->endTime && time >= current->endTime)) {
+			int count = (int)(time / current->endTime);
+			if (current->listener) {
+				current->listener(self, i, SP_ANIMATION_COMPLETE, 0, count);//track槽派发完成事件
+				if (self->tracks[i] != current) continue;
+			}
+			if (self->listener) {
+				self->listener(self, i, SP_ANIMATION_COMPLETE, 0, count);//中心状态管理器派发完成事件
+				if (self->tracks[i] != current) continue;
+			}
+		}
+
+		current->lastTime = current->time;  //记录上个时刻事件
+	}
+}
+
+看各个timeline的应用函数：
+平移,旋转,缩放,颜色 差不多。
+void _spTranslateTimeline_apply (const spTimeline* timeline, spSkeleton* skeleton, float lastTime, float time,
+		spEvent** firedEvents, int* eventsCount, float alpha) {
+	spBone *bone;
+	int frameIndex;
+	float prevFrameX, prevFrameY, frameTime, percent;
+
+	spTranslateTimeline* self = SUB_CAST(spTranslateTimeline, timeline);
+
+	if (time < self->frames[0]) return; /* Time is before first frame. */
+
+	bone = skeleton->bones[self->boneIndex];
+
+	if (time >= self->frames[self->framesCount - 3]) { /* Time is after last frame. */
+		//bone->x是当前骨骼的平移x,bone->data->x是骨骼静态配置的x,
+		//self->frames[self->framesCount - 2]表示最后一帧的平移x(相对静态配置的x)
+		//新的平移x = 旧的平移x + 浮动x * 混合系数
+		//浮动x的计算：静态配置x + 帧x - 当前骨骼x
+		bone->x += (bone->data->x + self->frames[self->framesCount - 2] - bone->x) * alpha;
+		bone->y += (bone->data->y + self->frames[self->framesCount - 1] - bone->y) * alpha;
+		return;
+	}
+
+	/* Interpolate between the previous frame and the current frame. */
+	frameIndex = binarySearch(self->frames, self->framesCount, time, 3);  //二分法找到time所在的帧
+	//frameIndex对应的数据是下一帧时间，frameIndex + 1 是下一帧x,frameIndex+2是下一帧y
+	prevFrameX = self->frames[frameIndex - 2];//上一帧平移x
+	prevFrameY = self->frames[frameIndex - 1];//上一帧平移y
+	frameTime = self->frames[frameIndex];//下一帧的时间
+	//self->frames[frameIndex]
+	//计算中间time在self->frames[frameIndex]和self->frames[frameIndex-3]的插值
+	//TRANSLATE_PREV_FRAME_TIME = -3
+	percent = 1 - (time - frameTime) / (self->frames[frameIndex + TRANSLATE_PREV_FRAME_TIME] - frameTime);
+	percent = spCurveTimeline_getCurvePercent(SUPER(self), frameIndex / 3 - 1, percent < 0 ? 0 : (percent > 1 ? 1 : percent));
+	//percent是插值百分比
+	//浮动x的计算：静态配置x + 上一帧x + 当前帧到下一帧总的浮动x * 当前帧浮动插值百分比 - 当前骨骼x
+	bone->x += (bone->data->x + prevFrameX + (self->frames[frameIndex + TRANSLATE_FRAME_X] - prevFrameX) * percent - bone->x)
+			* alpha;
+	bone->y += (bone->data->y + prevFrameY + (self->frames[frameIndex + TRANSLATE_FRAME_Y] - prevFrameY) * percent - bone->y)
+			* alpha;
+}
+
+附载时间轴：
+
+void _spAttachmentTimeline_apply (const spTimeline* timeline, spSkeleton* skeleton, float lastTime, float time,
+		spEvent** firedEvents, int* eventsCount, float alpha) {
+	int frameIndex;
+	const char* attachmentName;
+	spAttachmentTimeline* self = (spAttachmentTimeline*)timeline;
+
+	if (time < self->frames[0]) {
+		if (lastTime > time) _spAttachmentTimeline_apply(timeline, skeleton, lastTime, (float)INT_MAX, 0, 0, 0);
+		return;
+	} else if (lastTime > time) /**/
+		lastTime = -1;
+
+	frameIndex = time >= self->frames[self->framesCount - 1] ?
+		self->framesCount - 1 : binarySearch1(self->frames, self->framesCount, time) - 1;
+	if (self->frames[frameIndex] < lastTime) return;
+
+	attachmentName = self->attachmentNames[frameIndex];//拿到新的附载点名字(下图名字)
+	//给spSlot设置新的attachment
+	spSlot_setAttachment(skeleton->slots[self->slotIndex],
+			attachmentName ? spSkeleton_getAttachmentForSlotIndex(skeleton, self->slotIndex, attachmentName) : 0);
+}
+
+void spSlot_setAttachment (spSlot* self, spAttachment* attachment) {
+	CONST_CAST(spAttachment*, self->attachment) = attachment;
+	SUB_CAST(_spSlot, self)->attachmentTime = self->bone->skeleton->time;
+	self->attachmentVerticesCount = 0;
+}
+
+事件时间轴：
+void _spEventTimeline_apply (const spTimeline* timeline, spSkeleton* skeleton, float lastTime, float time, spEvent** firedEvents,
+		int* eventsCount, float alpha) {
+	spEventTimeline* self = (spEventTimeline*)timeline;
+	int frameIndex;
+	if (!firedEvents) return;
+
+	if (lastTime > time) { /* Fire events after last time for looped animations. */
+		_spEventTimeline_apply(timeline, skeleton, lastTime, (float)INT_MAX, firedEvents, eventsCount, alpha);
+		lastTime = -1;
+	} else if (lastTime >= self->frames[self->framesCount - 1]) /* Last time is after last frame. */
+	return;
+	if (time < self->frames[0]) return; /* Time is before first frame. */
+
+	if (lastTime < self->frames[0])
+		frameIndex = 0;
+	else {
+		float frame;
+		//找到上一个时刻所处的帧index
+		frameIndex = binarySearch1(self->frames, self->framesCount, lastTime);
+		frame = self->frames[frameIndex];
+		while (frameIndex > 0) { /* Fire multiple events with the same frame. */
+			if (self->frames[frameIndex - 1] != frame) break;
+			frameIndex--;
+		}
+	}
+	//取中间经过的帧，塞入对应的事件
+	for (; frameIndex < self->framesCount && time >= self->frames[frameIndex]; ++frameIndex) {
+		firedEvents[*eventsCount] = self->events[frameIndex];
+		(*eventsCount)++;
+	}
+}
