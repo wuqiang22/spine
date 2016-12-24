@@ -40,7 +40,7 @@ static int lua_spine_SpineCacheAnimation_createWithFile(lua_State* tolua_S)
 			return 0;
 		}
 
-		LuaSkeletonCacheAnimation* ret = LuaSkeletonCacheAnimation::createWithFile(arg0.c_str(), arg1.c_str());
+		LuaSkeletonCacheAnimation* ret = LuaSkeletonCacheAnimation::create(arg0.c_str(), arg1.c_str());
 		object_to_luaval<LuaSkeletonCacheAnimation>(tolua_S, "sp.SpineCacheAnimation", (LuaSkeletonCacheAnimation*)ret);
 		return 1;
 	}
@@ -68,12 +68,83 @@ static int lua_spine_SpineCacheAnimation_createWithFile(lua_State* tolua_S)
 			return 0;
 		}
 
-		LuaSkeletonCacheAnimation* ret = LuaSkeletonCacheAnimation::createWithFile(arg0.c_str(), arg1.c_str(), arg2);
+		LuaSkeletonCacheAnimation* ret = LuaSkeletonCacheAnimation::create(arg0.c_str(), arg1.c_str(), arg2);
 		object_to_luaval<LuaSkeletonCacheAnimation>(tolua_S, "sp.SpineCacheAnimation", (LuaSkeletonCacheAnimation*)ret);
 		return 1;
 	}
 
 	luaL_error(tolua_S, "%s has wrong number of arguments: %d, was expecting %d\n", "sp.SpineCacheAnimation:create", argc, 2);
+	return 0;
+
+#if COCOS2D_DEBUG >= 1
+tolua_lerror:
+	tolua_error(tolua_S, "#ferror in function 'lua_spine_SpineCacheAnimation_createWithFile'.", &tolua_err);
+	return 0;
+#endif
+}
+
+static int lua_spine_SpineCacheAnimation_createWithFileAsync(lua_State* tolua_S)
+{
+	if (NULL == tolua_S)
+		return 0;
+
+
+
+#if COCOS2D_DEBUG >= 1
+	tolua_Error tolua_err;
+	if (!tolua_isusertable(tolua_S, 1, "sp.SpineCacheAnimation", 0, &tolua_err)) goto tolua_lerror;
+#endif
+
+	bool ok = true;
+	int argc = 0;
+	argc = lua_gettop(tolua_S) - 1;
+
+	if (argc == 4)
+	{
+		std::string arg0;
+		ok &= luaval_to_std_string(tolua_S, 2, &arg0, "sp.SpineCacheAnimation:create");
+		if (!ok)
+		{
+			tolua_error(tolua_S, "invalid arguments in function 'lua_spine_SpineCacheAnimation_createWithFile'", nullptr);
+			return 0;
+		}
+		std::string arg1;
+		ok &= luaval_to_std_string(tolua_S, 3, &arg1, "sp.SpineCacheAnimation:create");
+		if (!ok)
+		{
+			tolua_error(tolua_S, "invalid arguments in function 'lua_spine_SpineCacheAnimation_createWithFile'", nullptr);
+			return 0;
+		}
+		LUA_NUMBER arg2;
+		ok &= luaval_to_number(tolua_S, 4, &arg2, "sp.SpineCacheAnimation:create");
+		if (!ok)
+		{
+			tolua_error(tolua_S, "invalid arguments in function 'lua_spine_SpineCacheAnimation_createWithFile'", nullptr);
+			return 0;
+		}
+		LUA_FUNCTION handle;
+		handle = toluafix_ref_function(tolua_S, 5, 0); ok &= handle != 0;
+		if (!ok)
+		{
+			tolua_error(tolua_S, "invalid arguments in function 'lua_spine_SpineCacheAnimation_createWithFile'", nullptr);
+			return 0;
+		}
+		auto callback = [=](LuaSkeletonCacheAnimation* animation){
+			int ID = (animation) ? (int)animation->_ID : -1;
+			int* luaID = (animation) ? &animation->_luaID : nullptr;
+			toluafix_pushusertype_ccobject(tolua_S, ID, luaID, (void*)animation, "sp.SpineCacheAnimation");
+			LuaEngine::getInstance()->getLuaStack()->executeFunctionByHandler(handle, 1);
+			LuaEngine::getInstance()->removeScriptHandler(handle);
+
+		};
+
+
+		LuaSkeletonCacheAnimation::createAsync(arg0.c_str(), arg1.c_str(), arg2, callback);
+		lua_settop(tolua_S, 1);
+		return 1;
+	}
+
+	luaL_error(tolua_S, "%s has wrong number of arguments: %d, was expecting %d\n", "sp.SpineCacheAnimation:create", argc, 4);
 	return 0;
 
 #if COCOS2D_DEBUG >= 1
@@ -97,6 +168,7 @@ TOLUA_API int register_cocos2dx_spine_manual_ex(lua_State* tolua_S)
 	tolua_beginmodule(tolua_S, "SpineCacheAnimation");
 
 	tolua_function(tolua_S, "create", lua_spine_SpineCacheAnimation_createWithFile);
+	tolua_function(tolua_S, "createAsync", lua_spine_SpineCacheAnimation_createWithFileAsync);
 
 	tolua_endmodule(tolua_S);
 	std::string typeName = typeid(LuaSkeletonCacheAnimation).name();

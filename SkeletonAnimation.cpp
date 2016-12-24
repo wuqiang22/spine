@@ -70,6 +70,7 @@ void disposeTrackEntry (spTrackEntry* entry) {
 
 //
 
+
 SkeletonAnimation* SkeletonAnimation::createWithData (spSkeletonData* skeletonData) {
 	SkeletonAnimation* node = new SkeletonAnimation(skeletonData);
 	node->autorelease();
@@ -102,6 +103,7 @@ SkeletonAnimation::SkeletonAnimation (spSkeletonData *skeletonData)
 		: SkeletonRenderer(skeletonData) {
 	initialize();
 }
+
 
 SkeletonAnimation::SkeletonAnimation (const std::string& skeletonDataFile, spAtlas* atlas, float scale)
 		: SkeletonRenderer(skeletonDataFile, atlas, scale) {

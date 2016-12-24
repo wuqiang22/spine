@@ -42,6 +42,9 @@ namespace spine {
 
 static const int quadTriangles[6] = {0, 1, 2, 2, 3, 0};
 
+
+
+
 SkeletonRenderer* SkeletonRenderer::createWithData (spSkeletonData* skeletonData, bool ownsSkeletonData) {
 	SkeletonRenderer* node = new SkeletonRenderer(skeletonData, ownsSkeletonData);
 	node->autorelease();
@@ -87,6 +90,8 @@ SkeletonRenderer::SkeletonRenderer () {
 	initialize();
 }
 
+
+
 SkeletonRenderer::SkeletonRenderer (spSkeletonData *skeletonData, bool ownsSkeletonData) {
 	initialize();
 
@@ -123,6 +128,7 @@ SkeletonRenderer::SkeletonRenderer (const std::string& skeletonDataFile, const s
 SkeletonRenderer::~SkeletonRenderer () {
 	if (_ownsSkeletonData) spSkeletonData_dispose(_skeleton->data);
 	if (_atlas) spAtlas_dispose(_atlas);
+	
 	spSkeleton_dispose(_skeleton);
 	_batch->release();
 	FREE(_worldVertices);

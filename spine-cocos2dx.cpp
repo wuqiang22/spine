@@ -42,6 +42,44 @@ void _spAtlasPage_createTexture (spAtlasPage* self, const char* path) {
 	self->height = texture->getPixelsHigh();
 }
 
+void _spAtlasPage_setTexture(spAtlasPage* self, void* texture)
+{
+	if (!texture)
+	{
+		return;
+	}
+	cocos2d::Texture2D* _texture = (cocos2d::Texture2D*)texture;
+	if (!_texture)
+	{
+		return;
+	}
+
+	_texture->retain();
+	self->rendererObject = _texture;
+	self->width = _texture->getPixelsWide();
+	self->height = _texture->getPixelsHigh();
+	spAtlasRegion* region= self->atlas->regions;
+	while (region)
+	{
+		if (region->page == self)
+		{
+			region->u = region->x / (float)self->width;
+			region->v = region->y / (float)self->height;
+			if (region->rotate) {
+				region->u2 = (region->x + region->height) / (float)self->width;
+				region->v2 = (region->y + region->width) / (float)self->height;
+			}
+			else {
+				region->u2 = (region->x + region->width) / (float)self->width;
+				region->v2 = (region->y + region->height) / (float)self->height;
+			}
+		}
+		region = region->next;
+	}
+
+	
+}
+
 void _spAtlasPage_disposeTexture (spAtlasPage* self) {
 	((Texture2D*)self->rendererObject)->release();
 }
