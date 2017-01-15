@@ -120,10 +120,13 @@ typedef struct {
 
 
 "eye": {//"eye"是slot的名字
-	//eye_indifferent是附载点的名字,后面是这个附载点的一些静态数据,附载点的名字和小图的名字是一样的。
+	//eye_indifferent是附载点的名字,后面是这个附载点的一些静态数据,<<<<附载点的名字和小图的名字是一样的。>>>>(这句是错的，attachment的名字和小图名字没有关系,
+	如果没有在{ "x": 85.72, "y": -28.18, "rotation": -70.63, "width": 93, "height": 89 }中找到name属性，那么默认小图名字就是attachment的名字)
 	"eye_indifferent": { "x": 85.72, "y": -28.18, "rotation": -70.63, "width": 93, "height": 89 },===============>这就是一个_Entry
 	"eye_surprised": { "x": 85.72, "y": -28.18, "rotation": -70.63, "width": 93, "height": 89 }	  ===============>这就是一个_Entry
 }
+
+不同的皮肤可以拥有相同的attachment，到时候换皮的时a候是根据slot的attchmentName来得到新皮肤的attachment的，不同皮肤的相同attachmentName的attachment对应的小图名字肯定不同。
 
 struct _Entry {
 	int slotIndex;//slot在所有slotData中的index
